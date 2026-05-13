@@ -3,6 +3,8 @@ import { db } from '@/drizzle/db'
 import { posts, categories, tags, postCategories, postTags } from '@/drizzle/schema'
 import { eq, and } from 'drizzle-orm'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(
   _request: Request,
   { params }: { params: { slug: string } }

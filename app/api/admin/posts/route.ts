@@ -1,9 +1,11 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import sanitizeHtml from 'sanitize-html'
 import { db } from '@/drizzle/db'
 import { posts, postCategories, postTags } from '@/drizzle/schema'
 import { eq, count, sql } from 'drizzle-orm'
+
+export const dynamic = 'force-dynamic'
 import { generateSlug } from '@/lib/slug'
 
 const sanitizeOptions: sanitizeHtml.IOptions = {
@@ -28,9 +30,9 @@ const createSchema = z.object({
   tag_ids: z.array(z.number().int().positive()).optional(),
 })
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const parsed = listSchema.safeParse(Object.fromEntries(searchParams))
 
     if (!parsed.success) {

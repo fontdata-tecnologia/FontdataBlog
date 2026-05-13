@@ -1,8 +1,10 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db } from '@/drizzle/db'
 import { posts, categories, tags, postCategories, postTags } from '@/drizzle/schema'
 import { eq, and, inArray, sql, count } from 'drizzle-orm'
+
+export const dynamic = 'force-dynamic'
 
 const querySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
@@ -12,9 +14,9 @@ const querySchema = z.object({
   search: z.string().optional(),
 })
 
-export async function GET(request: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
+    const { searchParams } = request.nextUrl
     const parsed = querySchema.safeParse(Object.fromEntries(searchParams))
 
     if (!parsed.success) {

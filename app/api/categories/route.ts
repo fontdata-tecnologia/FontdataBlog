@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/drizzle/db'
+
+export const dynamic = 'force-dynamic'
 import { categories } from '@/drizzle/schema'
 import { asc } from 'drizzle-orm'
 
