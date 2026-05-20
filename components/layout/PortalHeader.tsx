@@ -24,12 +24,9 @@ export async function PortalHeader({ blogName, logoUrl }: Props) {
     <header style={{ backgroundColor: 'var(--color-primary)' }} className="text-white shadow-md">
       {/* Row 1: logo + search */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
-        <Link href="/" className="hover:opacity-90 transition-opacity shrink-0">
-          {logoUrl ? (
-            <img src={logoUrl} alt={blogName} className="h-9 w-auto" />
-          ) : (
-            <span className="text-xl font-bold tracking-tight whitespace-nowrap">{blogName}</span>
-          )}
+        <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity shrink-0">
+          {logoUrl && <img src={logoUrl} alt="" className="h-9 w-auto" />}
+          <span className="text-xl font-bold tracking-tight whitespace-nowrap">{blogName}</span>
         </Link>
         <div className="w-full max-w-xs">
           <SearchBar />
