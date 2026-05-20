@@ -22,6 +22,7 @@ const putSchema = z.object({
     .optional(),
   company: z
     .object({
+      logo_url: z.string().max(500).optional(),
       blog_name: z.string().max(100).optional(),
       blog_description: z.string().max(500).optional(),
       company_name: z.string().max(150).optional(),
