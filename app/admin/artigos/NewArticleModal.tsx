@@ -79,8 +79,8 @@ export default function NewArticleModal({ open, onClose }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cover_image: coverImageUrl }),
       })
-    } catch {
-      // image generation is non-fatal; article is already saved
+    } catch (err) {
+      console.warn('[generateCoverImage] non-fatal failure:', err)
     }
   }
 
