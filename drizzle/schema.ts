@@ -162,6 +162,16 @@ export const automationConfig = pgTable('automation_config', {
   updated_at: timestamp('updated_at').notNull().default(sql`now()`),
 })
 
+export const agentConfigs = pgTable('agent_configs', {
+  id: text('id').primaryKey(), // agent slug e.g. 'headline', 'researcher'
+  prompt: text('prompt').notNull().default(''),
+  model: text('model').notNull().default('openai/gpt-4o-mini'),
+  updated_at: timestamp('updated_at').notNull().default(sql`now()`),
+})
+
+export type AgentConfig = typeof agentConfigs.$inferSelect
+export type NewAgentConfig = typeof agentConfigs.$inferInsert
+
 export const postsRelations = relations(posts, ({ many }) => ({
   postCategories: many(postCategories),
   postTags: many(postTags),
