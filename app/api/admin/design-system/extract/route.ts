@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import * as csstree from 'css-tree'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,6 +16,10 @@ interface ExtractedTokens {
 
 type CSSTokens = Omit<ExtractedTokens, 'source_url' | 'logo_candidates'>
 
+function stripComments(css: string): string {
+  return css.replace(/\/\*[\s\S]*?\*\//g, '')
+}
+
 function extractCSSTokens(cssText: string): CSSTokens {
   const custom_properties: Record<string, string> = {}
   const font_families = new Set<string>()
@@ -24,44 +27,46 @@ function extractCSSTokens(cssText: string): CSSTokens {
   const border_radii = new Set<string>()
   const font_sizes = new Set<string>()
 
-  let ast: csstree.CssNode
-  try {
-    ast = csstree.parse(cssText, { parseValue: true, onParseError: () => {} })
-  } catch {
-    return { custom_properties, font_families: [], colors: [], border_radii: [], font_sizes: [] }
-  }
+  const clean = stripComments(cssText)
 
-  csstree.walk(ast, (node) => {
-    if (node.type === 'Declaration') {
-      const prop = node.property
-      const value = csstree.generate(node.value)
+  // Extract all declarations: prop: value
+  const declRegex = /([\w-]+)\s*:\s*([^;}{]+)/g
+  let m: RegExpExecArray | null
 
-      if (prop.startsWith('--')) {
-        custom_properties[prop] = value
-        return
-      }
+  while ((m = declRegex.exec(clean)) !== null) {
+    const prop = m[1].trim()
+    const value = m[2].trim()
 
-      if (prop === 'font-family') {
-        font_families.add(value.trim())
-      }
-
-      if (['color', 'background-color', 'background', 'border-color', 'fill'].includes(prop)) {
-        const hex = value.match(/#[0-9A-Fa-f]{3,8}\b/g)
-        hex?.forEach((h) => {
-          if (h.length === 4 || h.length === 7) colors.add(h.toUpperCase())
-        })
-      }
-
-      if (prop === 'border-radius') {
-        border_radii.add(value.trim())
-      }
-
-      if (prop === 'font-size') {
-        const v = value.trim()
-        if (/^\d+(\.\d+)?(px|rem|em)$/.test(v)) font_sizes.add(v)
-      }
+    // CSS custom properties (--var-name: value)
+    if (prop.startsWith('--')) {
+      custom_properties[prop] = value
+      continue
     }
-  })
+
+    // font-family
+    if (prop === 'font-family') {
+      font_families.add(value)
+    }
+
+    // hex colors from color/background-color/background/border-color/fill
+    if (['color', 'background-color', 'background', 'border-color', 'fill'].includes(prop)) {
+      const hexMatches = value.match(/#[0-9A-Fa-f]{3,8}\b/g)
+      hexMatches?.forEach((h) => {
+        if (h.length === 4 || h.length === 7) colors.add(h.toUpperCase())
+      })
+    }
+
+    // border-radius
+    if (prop === 'border-radius') {
+      const v = value.split(/\s+/)[0] // take first value only (e.g. "8px 4px" → "8px")
+      if (/^\d+(\.\d+)?(px|rem|em|%)|^\d+$/.test(v)) border_radii.add(v)
+    }
+
+    // font-size
+    if (prop === 'font-size') {
+      if (/^\d+(\.\d+)?(px|rem|em)$/.test(value)) font_sizes.add(value)
+    }
+  }
 
   return {
     custom_properties,

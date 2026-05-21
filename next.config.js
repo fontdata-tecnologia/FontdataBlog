@@ -8,6 +8,7 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.supabase.co' },
     ],
   },
+  serverExternalPackages: ['css-tree'],
 }
 
 module.exports = nextConfig
