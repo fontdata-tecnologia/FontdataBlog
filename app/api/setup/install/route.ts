@@ -77,6 +77,9 @@ export async function POST(req: NextRequest) {
       { headers: { Authorization: `Bearer ${vercelToken}` } }
     )
     const deploysData = await deploysRes.json()
+    if (!deploysRes.ok) {
+      return NextResponse.json({ error: `Falha ao listar deployments: ${JSON.stringify(deploysData)}` }, { status: 500 })
+    }
     const lastDeployment = deploysData.deployments?.[0]
 
     if (!lastDeployment) {
