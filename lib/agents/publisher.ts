@@ -1,7 +1,7 @@
 // lib/agents/publisher.ts
 import sanitizeHtml from 'sanitize-html'
 import { db } from '@/drizzle/db'
-import { posts, articleThemes, automationConfig, siteSettings, newsletterSubscribers } from '@/drizzle/schema'
+import { posts, postCategories, categories, articleThemes, automationConfig, siteSettings, newsletterSubscribers } from '@/drizzle/schema'
 import { eq } from 'drizzle-orm'
 import { generateSlug } from '@/lib/slug'
 import { AgentContext, AgentResult, PublisherTriggers } from '@/lib/agents/types'
@@ -39,6 +39,23 @@ export async function runPublisherAgent(
       updated_at: now,
     })
     .returning()
+
+  // Auto-assign best matching category based on title keywords
+  try {
+    const allCategories = await db.select().from(categories)
+    if (allCategories.length > 0) {
+      const titleLower = (ctx.articleTitle + ' ' + (ctx.themeTitle ?? '')).toLowerCase()
+      const scored = allCategories.map((cat) => {
+        const words = cat.name.toLowerCase().split(/\s+/)
+        const score = words.filter((w) => titleLower.includes(w)).length
+        return { cat, score }
+      })
+      scored.sort((a, b) => b.score - a.score)
+      const best = scored[0]
+      const categoryId = best.cat.id
+      await db.insert(postCategories).values({ post_id: post.id, category_id: categoryId }).onConflictDoNothing()
+    }
+  } catch {}
 
   // Mark theme as used
   if (ctx.themeId) {
