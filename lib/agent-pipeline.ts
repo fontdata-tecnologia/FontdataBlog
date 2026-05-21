@@ -101,9 +101,10 @@ export function createPipelineStream(options: PipelineOptions): ReadableStream {
 
         // 5. Reviewer loop
         ctx.reviewCycles = 0
-        while (ctx.reviewCycles < MAX_REVIEW_CYCLES) {
+        let reviewCycles = 0
+        while (reviewCycles < MAX_REVIEW_CYCLES) {
           if (aborted()) { send(makeEvent('pipeline_error', 'Pipeline interrompido pelo usuário')); controller.close(); return }
-          const cycle = ctx.reviewCycles + 1
+          const cycle = reviewCycles + 1
           send(makeEvent('agent_start', `Revisando artigo (ciclo ${cycle})...`, 'reviewer'))
           const reviewResult = await runReviewerAgent(ctx, apiKey)
 
@@ -112,10 +113,11 @@ export function createPipelineStream(options: PipelineOptions): ReadableStream {
             break
           }
 
-          ctx.reviewCycles = cycle
+          reviewCycles = cycle
+          ctx.reviewCycles = reviewCycles
           send(makeEvent('agent_retry', reviewResult.message, 'reviewer', { issues: reviewResult.issues, cycle }))
 
-          if (ctx.reviewCycles >= MAX_REVIEW_CYCLES) {
+          if (reviewCycles >= MAX_REVIEW_CYCLES) {
             send(makeEvent('agent_done', 'Limite de revisões atingido, prosseguindo', 'reviewer'))
             break
           }
