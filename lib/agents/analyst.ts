@@ -1,24 +1,21 @@
 // lib/agents/analyst.ts
-import * as cheerio from 'cheerio'
 import { callOpenRouter } from '@/lib/ai'
 import { getAgentConfig } from '@/lib/agent-configs'
 import { AgentContext, AgentResult } from '@/lib/agents/types'
 
+// Uses Jina AI Reader (free, no API key) to extract clean text from any URL
 async function extractTextFromUrl(url: string): Promise<string> {
   try {
-    const res = await fetch(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; research-bot/1.0)' },
-      signal: AbortSignal.timeout(8000),
+    const jinaUrl = `https://r.jina.ai/${url}`
+    const res = await fetch(jinaUrl, {
+      headers: {
+        Accept: 'text/plain',
+        'X-Return-Format': 'text',
+      },
+      signal: AbortSignal.timeout(15000),
     })
     if (!res.ok) return ''
-    const html = await res.text()
-    const $ = cheerio.load(html)
-    $('script, style, nav, footer, header, aside, [role="navigation"]').remove()
-    const text = $('article, main, .content, .post-content, body')
-      .first()
-      .text()
-      .replace(/\s+/g, ' ')
-      .trim()
+    const text = await res.text()
     return text.slice(0, 6000)
   } catch {
     return ''
@@ -30,7 +27,11 @@ export async function runAnalystAgent(
   apiKey: string
 ): Promise<AgentResult> {
   if (!ctx.researchLinks || ctx.researchLinks.length === 0) {
-    return { success: false, message: 'Nenhum link para analisar', error: 'NO_LINKS' }
+    return {
+      success: true,
+      message: 'Nenhum link para analisar, continuando sem resumos',
+      data: { sourceSummaries: [] },
+    }
   }
 
   const config = await getAgentConfig('analyst')
@@ -64,7 +65,7 @@ export async function runAnalystAgent(
   if (summaries.length === 0) {
     return {
       success: true,
-      message: 'Nenhuma fonte acessível, continuando sem resumos',
+      message: 'Nenhuma fonte acessível via Jina, continuando sem resumos',
       data: { sourceSummaries: [] },
     }
   }

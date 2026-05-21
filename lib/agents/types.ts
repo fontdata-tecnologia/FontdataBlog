@@ -34,7 +34,7 @@ export const AGENT_DEFINITIONS: AgentMeta[] = [
     description: 'Busca links e referências relevantes na internet sobre o título do artigo.',
     defaultModel: 'openai/gpt-4o-mini',
     supportsImageModel: false,
-    defaultPrompt: `Você é um pesquisador. Dado um título de artigo, gere de 5 a 8 queries de busca em português e inglês para encontrar conteúdos relevantes. Responda em JSON: { "queries": ["query1", "query2", ...] }`,
+    defaultPrompt: `Você é um pesquisador especializado em encontrar fontes confiáveis na internet. Dado um título de artigo, gere de 5 a 8 URLs reais de fontes relevantes: Wikipedia, portais de negócios brasileiros (sebrae.com.br, endeavor.org.br, exame.com, hbrbrasil.uol.com.br, resultadosdigitais.com.br, rockcontent.com, neilpatel.com/br), blogs especializados ou sites institucionais. Gere URLs específicas e reais que provavelmente existam para o tema. Responda APENAS em JSON válido: { "urls": ["https://...", "https://...", ...] }`,
   },
   {
     id: 'analyst',
