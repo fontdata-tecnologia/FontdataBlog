@@ -15,7 +15,7 @@ export async function runReviewerAgent(
 
   const config = await getAgentConfig('reviewer')
 
-  const plainText = ctx.articleContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 8000)
+  const plainText = ctx.articleContent.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 32000)
 
   const resp = await callOpenRouter(
     {
