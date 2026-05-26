@@ -203,6 +203,25 @@ export const rssProcessedItems = pgTable(
   })
 )
 
+export const automationLogs = pgTable(
+  'automation_logs',
+  {
+    id: serial('id').primaryKey(),
+    triggered_by: text('triggered_by').notNull().default('schedule'), // 'schedule' | 'manual'
+    status: text('status').notNull().default('running'), // 'running' | 'success' | 'skipped' | 'error'
+    message: text('message'),
+    post_id: integer('post_id').references(() => posts.id, { onDelete: 'set null' }),
+    error: text('error'),
+    duration_ms: integer('duration_ms'),
+    started_at: timestamp('started_at').notNull().default(sql`now()`),
+    finished_at: timestamp('finished_at'),
+  },
+  (t) => ({
+    startedAtIdx: index('automation_logs_started_at_idx').on(t.started_at),
+    statusIdx: index('automation_logs_status_idx').on(t.status),
+  })
+)
+
 export type AgentConfig = typeof agentConfigs.$inferSelect
 export type NewAgentConfig = typeof agentConfigs.$inferInsert
 
@@ -253,3 +272,5 @@ export type RssFeed = typeof rssFeeds.$inferSelect
 export type NewRssFeed = typeof rssFeeds.$inferInsert
 export type RssProcessedItem = typeof rssProcessedItems.$inferSelect
 export type NewRssProcessedItem = typeof rssProcessedItems.$inferInsert
+export type AutomationLog = typeof automationLogs.$inferSelect
+export type NewAutomationLog = typeof automationLogs.$inferInsert

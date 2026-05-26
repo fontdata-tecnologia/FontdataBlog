@@ -660,6 +660,18 @@ const INTERVAL_OPTIONS = [
   { value: 168, label: 'A cada 7 dias' },
 ]
 
+interface AutomationLogEntry {
+  id: number
+  triggered_by: string
+  status: string
+  message: string | null
+  post_id: number | null
+  error: string | null
+  duration_ms: number | null
+  started_at: string
+  finished_at: string | null
+}
+
 function AutomacaoSection() {
   const [enabled, setEnabled] = useState(false)
   const [intervalHours, setIntervalHours] = useState(24)
@@ -673,6 +685,22 @@ function AutomacaoSection() {
   const [running, setRunning] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [imageWarning, setImageWarning] = useState<string | null>(null)
+  const [logs, setLogs] = useState<AutomationLogEntry[]>([])
+  const [expandedLogId, setExpandedLogId] = useState<number | null>(null)
+
+  async function reloadLogs() {
+    const data = await fetch('/api/admin/automation/logs?limit=20')
+      .then((r) => (r.ok ? r.json() : { logs: [] })) as { logs?: AutomationLogEntry[] }
+    setLogs(data.logs ?? [])
+  }
+
+  async function reloadConfig() {
+    const data = await fetch('/api/admin/automation').then((r) => r.json()) as {
+      last_run_at?: string; next_run_at?: string
+    }
+    if (data.last_run_at) setLastRunAt(data.last_run_at)
+    if (data.next_run_at) setNextRunAt(data.next_run_at)
+  }
 
   useEffect(() => {
     fetch('/api/admin/automation')
@@ -701,6 +729,8 @@ function AutomacaoSection() {
       .then((r) => (r.ok ? r.json() : {}))
       .then((data: { themes?: ArticleTheme[] }) => setThemes(data.themes ?? []))
       .catch(() => {})
+
+    reloadLogs()
   }, [])
 
   async function handleSave() {
@@ -719,8 +749,7 @@ function AutomacaoSection() {
       })
       if (!res.ok) throw new Error('Erro ao salvar')
       setToast({ type: 'success', msg: 'Configuração salva com sucesso!' })
-      const updated = await fetch('/api/admin/automation').then((r) => r.json()) as { next_run_at?: string }
-      if (updated.next_run_at) setNextRunAt(updated.next_run_at)
+      await reloadConfig()
     } catch {
       setToast({ type: 'error', msg: 'Erro ao salvar configuração' })
     } finally {
@@ -740,14 +769,13 @@ function AutomacaoSection() {
         if (data.image_error) {
           setImageWarning(`Imagem de capa não gerada: ${data.image_error}`)
         }
-        const updated = await fetch('/api/admin/automation').then((r) => r.json()) as { last_run_at?: string; next_run_at?: string }
-        if (updated.last_run_at) setLastRunAt(updated.last_run_at)
-        if (updated.next_run_at) setNextRunAt(updated.next_run_at)
       } else {
         setToast({ type: 'error', msg: data.message ?? data.error ?? 'Nenhum tema disponível' })
       }
+      await Promise.all([reloadConfig(), reloadLogs()])
     } catch {
       setToast({ type: 'error', msg: 'Erro ao executar automação' })
+      await reloadLogs()
     } finally {
       setRunning(false)
     }
@@ -767,184 +795,287 @@ function AutomacaoSection() {
     }).format(new Date(d))
   }
 
+  function formatDuration(ms: number | null) {
+    if (ms == null) return ''
+    if (ms < 1000) return `${ms}ms`
+    const s = Math.round(ms / 1000)
+    if (s < 60) return `${s}s`
+    return `${Math.floor(s / 60)}m ${s % 60}s`
+  }
+
+  const logStatusConfig: Record<string, { label: string; classes: string }> = {
+    running: { label: 'Executando', classes: 'bg-blue-50 text-blue-700 border-blue-200' },
+    success: { label: 'Sucesso', classes: 'bg-green-50 text-green-700 border-green-200' },
+    skipped: { label: 'Ignorado', classes: 'bg-gray-50 text-gray-500 border-gray-200' },
+    error: { label: 'Erro', classes: 'bg-red-50 text-red-700 border-red-200' },
+  }
+
   return (
-    <section className="bg-white rounded-xl border border-gray-200 p-6">
-      <h2 className="text-lg font-semibold text-neutral-900 mb-1">Automação de Postagens</h2>
-      <p className="text-sm text-gray-500 mb-6">
-        Configure a geração automática de artigos com IA. O sistema selecionará um tema pendente, gerará o artigo completo com imagem de capa e publicará no intervalo configurado.
-      </p>
+    <section className="space-y-6">
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h2 className="text-lg font-semibold text-neutral-900 mb-1">Automação de Postagens</h2>
+        <p className="text-sm text-gray-500 mb-6">
+          Configure a geração automática de artigos com IA. O sistema selecionará um tema pendente, gerará o artigo completo com imagem de capa e publicará no intervalo configurado.
+        </p>
 
-      {toast && (
-        <div className={`mb-4 px-4 py-3 rounded-lg text-sm ${
-          toast.type === 'success'
-            ? 'bg-green-50 text-green-800 border border-green-200'
-            : 'bg-red-50 text-red-800 border border-red-200'
-        }`}>
-          {toast.msg}
-        </div>
-      )}
-
-      {imageWarning && (
-        <div className="mb-5 px-4 py-3 rounded-lg text-sm bg-yellow-50 text-yellow-800 border border-yellow-200">
-          <span className="font-medium">Aviso:</span> {imageWarning}
-        </div>
-      )}
-
-      <div className="space-y-6">
-        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
-          <div>
-            <p className="text-sm font-medium text-gray-900">Automação ativa</p>
-            <p className="text-xs text-gray-500 mt-0.5">
-              {enabled
-                ? 'O sistema gerará artigos automaticamente no intervalo configurado.'
-                : 'A automação está pausada.'}
-            </p>
+        {toast && (
+          <div className={`mb-4 px-4 py-3 rounded-lg text-sm ${
+            toast.type === 'success'
+              ? 'bg-green-50 text-green-800 border border-green-200'
+              : 'bg-red-50 text-red-800 border border-red-200'
+          }`}>
+            {toast.msg}
           </div>
-          <button
-            onClick={() => setEnabled(!enabled)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              enabled ? 'bg-brand-primary' : 'bg-gray-300'
-            }`}
-          >
-            <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
-              enabled ? 'translate-x-6' : 'translate-x-1'
-            }`} />
-          </button>
-        </div>
+        )}
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Intervalo de publicação</label>
-          <select
-            value={intervalHours}
-            onChange={(e) => setIntervalHours(Number(e.target.value))}
-            className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary bg-white"
-          >
-            {INTERVAL_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Temas para geração</label>
-          <div className="space-y-2 mb-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={themeMode === 'all'}
-                onChange={() => setThemeMode('all')}
-                className="text-brand-primary"
-              />
-              <span className="text-sm text-gray-700">Todos os temas pendentes (rotação automática)</span>
-            </label>
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="radio"
-                checked={themeMode === 'specific'}
-                onChange={() => setThemeMode('specific')}
-                className="text-brand-primary"
-              />
-              <span className="text-sm text-gray-700">Selecionar temas específicos</span>
-            </label>
+        {imageWarning && (
+          <div className="mb-5 px-4 py-3 rounded-lg text-sm bg-yellow-50 text-yellow-800 border border-yellow-200">
+            <span className="font-medium">Aviso:</span> {imageWarning}
           </div>
+        )}
 
-          {themeMode === 'specific' && (
-            <div className="border border-gray-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
-              {themes.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-4">
-                  Nenhum tema cadastrado. Crie temas na seção Temas.
-                </p>
-              ) : (
-                themes.map((theme) => (
-                  <label
-                    key={theme.id}
-                    className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
-                  >
-                    <input
-                      type="checkbox"
-                      checked={selectedThemeIds.includes(theme.id)}
-                      onChange={() => toggleThemeId(theme.id)}
-                      className="mt-0.5 text-brand-primary"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{theme.title}</p>
-                      {theme.description && (
-                        <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{theme.description}</p>
-                      )}
-                    </div>
-                    <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                      theme.status === 'used'
-                        ? 'bg-green-50 text-green-700'
-                        : 'bg-yellow-50 text-yellow-700'
-                    }`}>
-                      {theme.status === 'used' ? 'Usado' : 'Pendente'}
-                    </span>
-                  </label>
-                ))
-              )}
+        <div className="space-y-6">
+          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200">
+            <div>
+              <p className="text-sm font-medium text-gray-900">Automação ativa</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {enabled
+                  ? 'O sistema gerará artigos automaticamente no intervalo configurado.'
+                  : 'A automação está pausada.'}
+              </p>
             </div>
-          )}
+            <button
+              onClick={() => setEnabled(!enabled)}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                enabled ? 'bg-brand-primary' : 'bg-gray-300'
+              }`}
+            >
+              <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                enabled ? 'translate-x-6' : 'translate-x-1'
+              }`} />
+            </button>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Intervalo de publicação</label>
+            <select
+              value={intervalHours}
+              onChange={(e) => setIntervalHours(Number(e.target.value))}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary bg-white"
+            >
+              {INTERVAL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Temas para geração</label>
+            <div className="space-y-2 mb-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={themeMode === 'all'}
+                  onChange={() => setThemeMode('all')}
+                  className="text-brand-primary"
+                />
+                <span className="text-sm text-gray-700">Todos os temas pendentes (rotação automática)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  checked={themeMode === 'specific'}
+                  onChange={() => setThemeMode('specific')}
+                  className="text-brand-primary"
+                />
+                <span className="text-sm text-gray-700">Selecionar temas específicos</span>
+              </label>
+            </div>
+
+            {themeMode === 'specific' && (
+              <div className="border border-gray-200 rounded-lg overflow-hidden max-h-48 overflow-y-auto">
+                {themes.length === 0 ? (
+                  <p className="text-sm text-gray-400 text-center py-4">
+                    Nenhum tema cadastrado. Crie temas na seção Temas.
+                  </p>
+                ) : (
+                  themes.map((theme) => (
+                    <label
+                      key={theme.id}
+                      className="flex items-start gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100 last:border-0"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedThemeIds.includes(theme.id)}
+                        onChange={() => toggleThemeId(theme.id)}
+                        className="mt-0.5 text-brand-primary"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{theme.title}</p>
+                        {theme.description && (
+                          <p className="text-xs text-gray-500 mt-0.5 line-clamp-1">{theme.description}</p>
+                        )}
+                      </div>
+                      <span className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                        theme.status === 'used'
+                          ? 'bg-green-50 text-green-700'
+                          : 'bg-yellow-50 text-yellow-700'
+                      }`}>
+                        {theme.status === 'used' ? 'Usado' : 'Pendente'}
+                      </span>
+                    </label>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Prompt adicional <span className="font-normal text-gray-400">(opcional)</span>
+            </label>
+            <p className="text-xs text-gray-500 mb-2">
+              Instrução extra injetada na geração de cada artigo. Ex: &ldquo;Sempre inclua exemplos práticos&rdquo;, &ldquo;Use tom mais técnico&rdquo;.
+            </p>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              rows={3}
+              placeholder="Ex: Sempre inclua ao menos um exemplo prático e uma lista de dicas ao final do artigo."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary resize-y"
+            />
+          </div>
+
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Última execução</p>
+              <p className="text-sm text-gray-900">{formatDateTime(lastRunAt)}</p>
+            </div>
+            <div className="hidden sm:block w-px bg-gray-200" />
+            <div className="flex-1">
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Próxima execução</p>
+              <p className="text-sm text-gray-900">{formatDateTime(nextRunAt)}</p>
+            </div>
+          </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Prompt adicional <span className="font-normal text-gray-400">(opcional)</span>
-          </label>
-          <p className="text-xs text-gray-500 mb-2">
-            Instrução extra injetada na geração de cada artigo. Ex: &ldquo;Sempre inclua exemplos práticos&rdquo;, &ldquo;Use tom mais técnico&rdquo;.
-          </p>
-          <textarea
-            value={customPrompt}
-            onChange={(e) => setCustomPrompt(e.target.value)}
-            rows={3}
-            placeholder="Ex: Sempre inclua ao menos um exemplo prático e uma lista de dicas ao final do artigo."
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary resize-y"
-          />
-        </div>
-
-        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Última execução</p>
-            <p className="text-sm text-gray-900">{formatDateTime(lastRunAt)}</p>
-          </div>
-          <div className="hidden sm:block w-px bg-gray-200" />
-          <div className="flex-1">
-            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Próxima execução</p>
-            <p className="text-sm text-gray-900">{formatDateTime(nextRunAt)}</p>
-          </div>
+        <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
+          <button
+            onClick={handleRunNow}
+            disabled={running || saving}
+            className="flex items-center gap-2 text-sm font-medium text-brand-primary hover:text-brand-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {running ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Gerando artigo...
+              </>
+            ) : (
+              <>
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3" />
+                </svg>
+                Executar agora
+              </>
+            )}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || running}
+            className="bg-brand-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-brand-primary-dark transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Salvando...' : 'Salvar Configuração'}
+          </button>
         </div>
       </div>
 
-      <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
-        <button
-          onClick={handleRunNow}
-          disabled={running || saving}
-          className="flex items-center gap-2 text-sm font-medium text-brand-primary hover:text-brand-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {running ? (
-            <>
-              <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Gerando artigo...
-            </>
-          ) : (
-            <>
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="5 3 19 12 5 21 5 3" />
-              </svg>
-              Executar agora
-            </>
-          )}
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={saving || running}
-          className="bg-brand-primary text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-brand-primary-dark transition-colors disabled:opacity-50"
-        >
-          {saving ? 'Salvando...' : 'Salvar Configuração'}
-        </button>
+      {/* Execution log history */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-neutral-900">Histórico de Execuções</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Últimas 20 execuções da automação (agendadas e manuais)</p>
+          </div>
+          <button
+            onClick={reloadLogs}
+            className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+          >
+            <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+            Atualizar
+          </button>
+        </div>
+
+        {logs.length === 0 ? (
+          <div className="text-center py-8 text-gray-400">
+            <svg className="h-8 w-8 mx-auto mb-2 opacity-40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25z" />
+            </svg>
+            <p className="text-sm">Nenhuma execução registrada ainda</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {logs.map((log) => {
+              const statusCfg = logStatusConfig[log.status] ?? { label: log.status, classes: 'bg-gray-50 text-gray-500 border-gray-200' }
+              const isExpanded = expandedLogId === log.id
+              const hasDetail = log.error || log.message
+
+              return (
+                <div key={log.id} className="py-3">
+                  <div
+                    className={`flex items-start gap-3 ${hasDetail ? 'cursor-pointer' : ''}`}
+                    onClick={() => hasDetail && setExpandedLogId(isExpanded ? null : log.id)}
+                  >
+                    <span className={`shrink-0 mt-0.5 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${statusCfg.classes}`}>
+                      {statusCfg.label}
+                    </span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-800 truncate">
+                        {log.message ?? (log.status === 'running' ? 'Em execução...' : '—')}
+                      </p>
+                      <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                        <span className="text-xs text-gray-400">{formatDateTime(log.started_at)}</span>
+                        <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${
+                          log.triggered_by === 'manual'
+                            ? 'bg-purple-50 text-purple-600'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {log.triggered_by === 'manual' ? 'Manual' : 'Agendado'}
+                        </span>
+                        {log.duration_ms != null && log.duration_ms > 0 && (
+                          <span className="text-xs text-gray-400">{formatDuration(log.duration_ms)}</span>
+                        )}
+                        {log.post_id && (
+                          <a
+                            href={`/admin/artigos/${log.post_id}/editar`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-xs text-brand-primary hover:underline"
+                          >
+                            Ver artigo #{log.post_id}
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                    {hasDetail && (
+                      <span className="shrink-0 text-gray-300 text-xs mt-1">{isExpanded ? '▲' : '▼'}</span>
+                    )}
+                  </div>
+                  {isExpanded && hasDetail && (
+                    <div className="mt-2 ml-0 bg-gray-950 rounded-lg p-3 font-mono text-xs text-gray-300 whitespace-pre-wrap break-all">
+                      {log.error ?? log.message}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
     </section>
   )

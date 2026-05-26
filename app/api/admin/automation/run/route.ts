@@ -5,7 +5,7 @@ export const maxDuration = 60
 
 export async function POST() {
   try {
-    const result = await runAutomationCycle(true) // force=true skips interval check
+    const result = await runAutomationCycle(true, 'manual')
     const status = result.success ? 200 : result.skipped ? 200 : 500
     return NextResponse.json(result, { status })
   } catch (err) {

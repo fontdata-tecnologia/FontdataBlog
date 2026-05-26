@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runAutomationCycle } from '@/lib/automation'
 
-export const maxDuration = 60
+export const maxDuration = 800
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = await runAutomationCycle(false) // respects interval check
+    const result = await runAutomationCycle(false, 'schedule')
     return NextResponse.json(result)
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Erro interno'
