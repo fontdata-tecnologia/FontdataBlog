@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { db } from '@/drizzle/db'
 import { siteSettings } from '@/drizzle/schema'
 import { eq } from 'drizzle-orm'
+import type { AgentExtra } from '@/lib/firecrawl'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,15 +22,17 @@ async function upsertSetting(key: string, value: string) {
 
 export async function GET() {
   try {
-    const [apiKey, extraRaw] = await Promise.all([
+    const [firecrawlKey, pexelsKey, extraRaw] = await Promise.all([
       getSetting('firecrawl_api_key'),
+      getSetting('pexels_api_key'),
       getSetting('agents_extra'),
     ])
-    const agentsExtra: Record<string, { use_firecrawl?: boolean }> = extraRaw
-      ? (JSON.parse(extraRaw) as Record<string, { use_firecrawl?: boolean }>)
+    const agentsExtra: Record<string, AgentExtra> = extraRaw
+      ? (JSON.parse(extraRaw) as Record<string, AgentExtra>)
       : {}
     return NextResponse.json({
-      firecrawl_configured: !!(apiKey && apiKey.length > 0),
+      firecrawl_configured: !!(firecrawlKey && firecrawlKey.length > 0),
+      pexels_configured: !!(pexelsKey && pexelsKey.length > 0),
       agents_extra: agentsExtra,
     })
   } catch {
@@ -39,7 +42,7 @@ export async function GET() {
 
 export async function PUT(request: Request) {
   try {
-    const body = await request.json() as { agents_extra?: Record<string, { use_firecrawl?: boolean }> }
+    const body = await request.json() as { agents_extra?: Record<string, AgentExtra> }
     if (body.agents_extra !== undefined) {
       await upsertSetting('agents_extra', JSON.stringify(body.agents_extra))
     }

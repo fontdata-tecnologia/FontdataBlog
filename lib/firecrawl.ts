@@ -10,14 +10,19 @@ export async function getFirecrawlApiKey(): Promise<string | null> {
   }
 }
 
-export async function getAgentsExtra(): Promise<Record<string, { use_firecrawl?: boolean }>> {
+export interface AgentExtra {
+  use_firecrawl?: boolean
+  image_source?: 'ai' | 'pexels'
+}
+
+export async function getAgentsExtra(): Promise<Record<string, AgentExtra>> {
   try {
     const { db } = await import('@/drizzle/db')
     const { siteSettings } = await import('@/drizzle/schema')
     const { eq } = await import('drizzle-orm')
     const row = await db.select().from(siteSettings).where(eq(siteSettings.key, 'agents_extra')).limit(1)
     if (row.length > 0 && row[0].value) {
-      return JSON.parse(row[0].value) as Record<string, { use_firecrawl?: boolean }>
+      return JSON.parse(row[0].value) as Record<string, AgentExtra>
     }
   } catch {}
   return {}

@@ -61,6 +61,11 @@ const putSchema = z.object({
       api_key: z.string().optional(),
     })
     .optional(),
+  pexels: z
+    .object({
+      api_key: z.string().optional(),
+    })
+    .optional(),
   design_system: z
     .object({
       font_sans: z.string().max(200).optional(),
@@ -132,7 +137,7 @@ export async function PUT(request: Request) {
       )
     }
 
-    const { template, colors, company, ai, newsletter, telegram, firecrawl } = parsed.data
+    const { template, colors, company, ai, newsletter, telegram, firecrawl, pexels } = parsed.data
 
     if (template !== undefined) {
       await upsertSetting('active_template', template)
@@ -171,6 +176,10 @@ export async function PUT(request: Request) {
 
     if (firecrawl?.api_key !== undefined) {
       await upsertSetting('firecrawl_api_key', firecrawl.api_key)
+    }
+
+    if (pexels?.api_key !== undefined) {
+      await upsertSetting('pexels_api_key', pexels.api_key)
     }
 
     if (telegram !== undefined) {

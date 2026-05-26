@@ -19,15 +19,20 @@ interface FirecrawlSettings {
   api_key: string
 }
 
+interface PexelsSettings {
+  api_key: string
+}
+
 interface Props {
   initial: CompanyInfo
   initialAI: AISettings
   initialTelegram: TelegramSettings
   initialFirecrawl: FirecrawlSettings
+  initialPexels: PexelsSettings
 }
 
 type CompanyKey = keyof CompanyInfo
-type SectionId = 'blog' | 'empresa' | 'redes' | 'ia' | 'firecrawl' | 'api' | 'telegram'
+type SectionId = 'blog' | 'empresa' | 'redes' | 'ia' | 'firecrawl' | 'pexels' | 'api' | 'telegram'
 
 interface RemoteModel {
   id: string
@@ -53,6 +58,7 @@ const SIDEBAR_ITEMS: { id: SectionId; label: string; icon: string }[] = [
   { id: 'redes', label: 'Redes Sociais', icon: '🌐' },
   { id: 'ia', label: 'IA (OpenRouter)', icon: '🤖' },
   { id: 'firecrawl', label: 'Firecrawl', icon: '🔥' },
+  { id: 'pexels', label: 'Pexels', icon: '📷' },
   { id: 'api', label: 'API', icon: '🔑' },
   { id: 'telegram', label: 'Telegram Bot', icon: '✈️' },
 ]
@@ -83,11 +89,12 @@ const SECTIONS: Record<string, { fields: { key: CompanyKey; label: string; type?
   },
 }
 
-export function ConfiguracoesClient({ initial, initialAI, initialTelegram, initialFirecrawl }: Props) {
+export function ConfiguracoesClient({ initial, initialAI, initialTelegram, initialFirecrawl, initialPexels }: Props) {
   const [company, setCompany] = useState<CompanyInfo>(initial)
   const [ai, setAI] = useState<AISettings>(initialAI)
   const [telegram, setTelegram] = useState<TelegramSettings>(initialTelegram)
   const [firecrawl, setFirecrawl] = useState<FirecrawlSettings>(initialFirecrawl)
+  const [pexels, setPexels] = useState<PexelsSettings>(initialPexels)
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [activeSection, setActiveSection] = useState<SectionId>('blog')
@@ -122,6 +129,10 @@ export function ConfiguracoesClient({ initial, initialAI, initialTelegram, initi
 
   function handleFirecrawlKeyChange(value: string) {
     setFirecrawl((prev) => ({ ...prev, api_key: value }))
+  }
+
+  function handlePexelsKeyChange(value: string) {
+    setPexels((prev) => ({ ...prev, api_key: value }))
   }
 
   async function handleRegisterWebhook() {
@@ -161,7 +172,7 @@ export function ConfiguracoesClient({ initial, initialAI, initialTelegram, initi
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ company, ai, telegram, firecrawl }),
+        body: JSON.stringify({ company, ai, telegram, firecrawl, pexels }),
       })
       if (!res.ok) {
         const data = await res.json()
@@ -274,6 +285,30 @@ export function ConfiguracoesClient({ initial, initialAI, initialTelegram, initi
                 value={firecrawl.api_key}
                 onChange={(e) => handleFirecrawlKeyChange(e.target.value)}
                 placeholder="fc-..."
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+              />
+            </div>
+          </section>
+        )
+      case 'pexels':
+        return (
+          <section className="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-neutral-900 mb-1">Pexels</h2>
+            <p className="text-sm text-gray-500 mb-5">
+              Integração opcional com o banco de fotos Pexels. Quando configurada, o agente Designer pode buscar uma
+              foto relacionada ao artigo em vez de gerar uma imagem via IA. Obtenha sua chave gratuita em{' '}
+              <a href="https://www.pexels.com/api/" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">
+                pexels.com/api
+              </a>
+              . Após salvar, a opção de fonte aparece nas configurações do agente Designer.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Chave de API</label>
+              <input
+                type="password"
+                value={pexels.api_key}
+                onChange={(e) => handlePexelsKeyChange(e.target.value)}
+                placeholder="Sua chave da API Pexels..."
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
               />
             </div>

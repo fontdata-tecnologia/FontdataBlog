@@ -246,46 +246,57 @@ export async function callOpenRouterImage(
   const data = (await response.json()) as {
     choices: {
       message: {
-        content?: string
-        images?: { image_url: { url: string } }[]
+        content?: string | Array<Record<string, unknown>>
+        images?: Array<{ image_url?: { url: string }; url?: string }>
       }
     }[]
   }
 
-  console.log('OpenRouter image response:', JSON.stringify(data.choices?.[0]?.message ?? {}).substring(0, 500))
-
   const msg = data.choices?.[0]?.message
+  console.log('OpenRouter image response message:', JSON.stringify(msg ?? {}).substring(0, 1000))
 
+  // top-level images array (some OpenRouter models)
   if (msg?.images && msg.images.length > 0) {
-    return msg.images[0].image_url.url
+    const img = msg.images[0]
+    const url = img.image_url?.url ?? img.url
+    if (url) return url
   }
 
   if (msg?.content && typeof msg.content === 'string') {
     const base64Match = msg.content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/)
-    if (base64Match) {
-      return base64Match[0]
-    }
+    if (base64Match) return base64Match[0]
 
     const urlMatch = msg.content.match(/https?:\/\/[^\s"')\]]+\.(png|jpg|jpeg|webp|gif)[^\s"')\]]*/i)
-    if (urlMatch) {
-      return urlMatch[0]
-    }
+    if (urlMatch) return urlMatch[0]
   }
 
   if (msg?.content && Array.isArray(msg.content)) {
-    for (const part of msg.content as Array<Record<string, unknown>>) {
+    for (const part of msg.content) {
       if (part.type === 'image_url' && part.image_url && typeof part.image_url === 'object') {
         const url = (part.image_url as { url?: string }).url
         if (url) return url
       }
-      if (part.type === 'image' && part.source && typeof part.source === 'object') {
-        const src = part.source as { data?: string; type?: string }
-        if (src.data) return `data:image/png;base64,${src.data}`
+      if (part.type === 'image') {
+        // Anthropic-style: { source: { data, media_type } }
+        if (part.source && typeof part.source === 'object') {
+          const src = part.source as { data?: string; media_type?: string }
+          if (src.data) return `data:${src.media_type ?? 'image/png'};base64,${src.data}`
+        }
+        // Flat style: { data, mime_type }
+        if (typeof part.data === 'string') {
+          const mime = typeof part.mime_type === 'string' ? part.mime_type : 'image/png'
+          return `data:${mime};base64,${part.data}`
+        }
+        // URL directly on part
+        if (typeof part.url === 'string') return part.url
       }
     }
   }
 
-  throw new Error('IA não retornou imagem. Resposta: ' + JSON.stringify(data).substring(0, 300))
+  throw new Error(
+    'IA não retornou imagem. message=' +
+      JSON.stringify(msg ?? null).substring(0, 600)
+  )
 }
 
 export async function getPromptFromDB(key: string): Promise<string> {

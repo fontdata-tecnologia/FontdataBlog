@@ -64,7 +64,8 @@ export default function AgentsSection() {
   const [modelDropdownOpen, setModelDropdownOpen] = useState<AgentId | null>(null)
   const [toast, setToast] = useState<Toast | null>(null)
   const [firecrawlConfigured, setFirecrawlConfigured] = useState(false)
-  const [agentsExtra, setAgentsExtra] = useState<Record<string, { use_firecrawl?: boolean }>>({})
+  const [pexelsConfigured, setPexelsConfigured] = useState(false)
+  const [agentsExtra, setAgentsExtra] = useState<Record<string, { use_firecrawl?: boolean; image_source?: 'ai' | 'pexels' }>>({})
   const [savingExtra, setSavingExtra] = useState<AgentId | null>(null)
 
   // Pipeline runner state
@@ -94,8 +95,9 @@ export default function AgentsSection() {
 
     fetch('/api/admin/agents/extra')
       .then((r) => r.json())
-      .then((data: { firecrawl_configured?: boolean; agents_extra?: Record<string, { use_firecrawl?: boolean }> }) => {
+      .then((data: { firecrawl_configured?: boolean; pexels_configured?: boolean; agents_extra?: Record<string, { use_firecrawl?: boolean; image_source?: 'ai' | 'pexels' }> }) => {
         setFirecrawlConfigured(data.firecrawl_configured ?? false)
+        setPexelsConfigured(data.pexels_configured ?? false)
         setAgentsExtra(data.agents_extra ?? {})
       })
       .catch(() => {})
@@ -144,6 +146,24 @@ export default function AgentsSection() {
         body: JSON.stringify({ agents_extra: updated }),
       })
       setToast({ type: 'success', msg: `Firecrawl ${enabled ? 'ativado' : 'desativado'} para ${AGENT_LABELS[id]}` })
+    } catch {
+      setToast({ type: 'error', msg: 'Erro ao salvar' })
+    } finally {
+      setSavingExtra(null)
+    }
+  }
+
+  async function setImageSource(source: 'ai' | 'pexels') {
+    const updated = { ...agentsExtra, designer: { ...(agentsExtra['designer'] ?? {}), image_source: source } }
+    setAgentsExtra(updated)
+    setSavingExtra('designer')
+    try {
+      await fetch('/api/admin/agents/extra', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agents_extra: updated }),
+      })
+      setToast({ type: 'success', msg: `Fonte de imagem alterada para ${source === 'pexels' ? 'Pexels' : 'IA'}` })
     } catch {
       setToast({ type: 'error', msg: 'Erro ao salvar' })
     } finally {
@@ -436,6 +456,44 @@ export default function AgentsSection() {
                           }`}
                         />
                       </button>
+                    </div>
+                  )}
+
+                  {/* Pexels image source selector — designer only */}
+                  {cfg.id === 'designer' && pexelsConfigured && (
+                    <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                      <p className="text-xs font-medium text-green-900 mb-2">Fonte da Imagem de Capa</p>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          disabled={savingExtra === 'designer'}
+                          onClick={() => setImageSource('ai')}
+                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50 ${
+                            (agentsExtra['designer']?.image_source ?? 'ai') === 'ai'
+                              ? 'bg-brand-primary text-white border-brand-primary'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          🤖 Gerar com IA
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingExtra === 'designer'}
+                          onClick={() => setImageSource('pexels')}
+                          className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition-colors disabled:opacity-50 ${
+                            agentsExtra['designer']?.image_source === 'pexels'
+                              ? 'bg-green-600 text-white border-green-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          📷 Buscar no Pexels
+                        </button>
+                      </div>
+                      <p className="text-xs text-green-700 mt-2">
+                        {(agentsExtra['designer']?.image_source ?? 'ai') === 'pexels'
+                          ? 'O agente vai gerar uma query de busca e encontrar uma foto relacionada no Pexels.'
+                          : 'O agente vai gerar um prompt e criar a imagem via modelo de IA.'}
+                      </p>
                     </div>
                   )}
 
