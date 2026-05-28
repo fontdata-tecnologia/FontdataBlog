@@ -2,7 +2,7 @@
 import { callOpenRouter } from '@/lib/ai'
 import { getAgentConfig } from '@/lib/agent-configs'
 import { AgentContext, AgentResult } from '@/lib/agents/types'
-import { getFirecrawlApiKey, getAgentsExtra, firecrawlSearch } from '@/lib/firecrawl'
+import { getFirecrawlApiKey, getAgentsExtra, firecrawlSearch, isArticleUrl } from '@/lib/firecrawl'
 
 function extractUrls(text: string): string[] {
   // Try JSON parse first (handles ```json blocks too)
@@ -41,7 +41,7 @@ async function searchWithJina(query: string): Promise<string[]> {
     const data = await resp.json() as { data?: Array<{ url?: string }> }
     return (data.data ?? [])
       .map((r) => r.url)
-      .filter((u): u is string => typeof u === 'string' && u.startsWith('http'))
+      .filter((u): u is string => typeof u === 'string' && u.startsWith('http') && isArticleUrl(u))
       .slice(0, 8)
   } catch {
     return []
@@ -91,7 +91,7 @@ export async function runResearcherAgent(
     const fromContent = extractUrls(resp.choices[0]?.message?.content ?? '')
     const seen = new Set<string>()
     suggestedUrls = [...citations, ...fromContent]
-      .filter((u) => (seen.has(u) ? false : (seen.add(u), true)))
+      .filter((u) => isArticleUrl(u) && (seen.has(u) ? false : (seen.add(u), true)))
       .slice(0, 8)
     searchSource = 'Perplexity Search'
   } else {
@@ -115,7 +115,7 @@ export async function runResearcherAgent(
       searchWithJina(ctx.headline),
     ])
 
-    const llmUrls = extractUrls(llmResp.choices[0]?.message?.content ?? '')
+    const llmUrls = extractUrls(llmResp.choices[0]?.message?.content ?? '').filter(isArticleUrl)
     // Jina results first (real URLs from the web), LLM suggestions fill remaining slots
     const merged = [...jinaUrls]
     for (const u of llmUrls) {

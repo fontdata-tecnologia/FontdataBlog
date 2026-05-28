@@ -28,6 +28,29 @@ export async function getAgentsExtra(): Promise<Record<string, AgentExtra>> {
   return {}
 }
 
+const NON_ARTICLE_DOMAINS = [
+  'youtube.com', 'youtu.be',
+  'instagram.com', 'reels',
+  'tiktok.com',
+  'facebook.com', 'fb.com', 'fb.watch',
+  'twitter.com', 'x.com',
+  'pinterest.com',
+  'twitch.tv',
+  'vimeo.com',
+  'dailymotion.com',
+  'threads.net',
+  'snapchat.com',
+]
+
+export function isArticleUrl(url: string): boolean {
+  try {
+    const { hostname, pathname } = new URL(url)
+    return !NON_ARTICLE_DOMAINS.some(d => hostname.includes(d) || pathname.includes(d))
+  } catch {
+    return false
+  }
+}
+
 export async function firecrawlSearch(query: string, apiKey: string): Promise<string[]> {
   try {
     const resp = await fetch('https://api.firecrawl.dev/v1/search', {
@@ -36,14 +59,15 @@ export async function firecrawlSearch(query: string, apiKey: string): Promise<st
         'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ query, limit: 8 }),
+      body: JSON.stringify({ query, limit: 12 }),
       signal: AbortSignal.timeout(20_000),
     })
     if (!resp.ok) return []
     const data = await resp.json() as { data?: Array<{ url?: string }> }
     return (data.data ?? [])
       .map((r) => r.url)
-      .filter((u): u is string => typeof u === 'string' && u.startsWith('http'))
+      .filter((u): u is string => typeof u === 'string' && u.startsWith('http') && isArticleUrl(u))
+      .slice(0, 8)
   } catch {
     return []
   }
