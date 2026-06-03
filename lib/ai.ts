@@ -2,21 +2,18 @@ import { getAppUrl } from '@/lib/app-url'
 
 export type AIFeature =
   | 'content_generation'
-  | 'title_suggestion'
-  | 'excerpt_generation'
-  | 'seo_optimization'
   | 'image_description'
-  | 'summarization'
+  | 'image_generation'
+  | 'briefing_generation'
+  | 'prompt_generation'
+  | 'theme_suggestion'
+  | 'category_matching'
   | string
 
 const DEFAULT_MODELS: Record<string, string> = {
   content_generation: 'openai/gpt-4o-mini',
-  title_suggestion: 'openai/gpt-4o-mini',
-  excerpt_generation: 'openai/gpt-4o-mini',
-  seo_optimization: 'openai/gpt-4o-mini',
   image_description: 'openai/gpt-4o-mini',
   image_generation: 'openai/gpt-5-image',
-  summarization: 'openai/gpt-4o-mini',
   briefing_generation: 'openai/gpt-4o-mini',
   prompt_generation: 'openai/gpt-4o-mini',
   theme_suggestion: 'openai/gpt-4o-mini',

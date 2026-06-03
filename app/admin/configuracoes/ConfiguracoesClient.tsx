@@ -41,16 +41,11 @@ interface RemoteModel {
 
 const FEATURE_LABELS: Record<string, string> = {
   content_generation: 'Geração de Conteúdo',
-  title_suggestion: 'Sugestão de Títulos',
-  excerpt_generation: 'Geração de Resumo',
-  seo_optimization: 'Otimização SEO',
   image_description: 'Descrição de Imagens',
   image_generation: 'Geração de Imagens',
-  summarization: 'Sumarização',
   briefing_generation: 'Geração de Briefing',
   prompt_generation: 'Geração de Prompts',
   theme_suggestion: 'Sugestão de Temas',
-  category_matching: 'Categorização de Artigos',
 }
 
 const SIDEBAR_ITEMS: { id: SectionId; label: string; icon: string }[] = [
