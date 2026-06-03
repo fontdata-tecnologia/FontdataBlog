@@ -618,6 +618,13 @@ export function ConfiguracoesClient({ initial, initialAI, initialTelegram, initi
                           <div className="flex items-center gap-3 shrink-0">
                             <span className="text-gray-500 text-xs">{row.request_count}x</span>
                             <span className="text-gray-400 text-xs">{row.total_tokens.toLocaleString('pt-BR')} tok</span>
+                            {row.total_cost_brl != null ? (
+                              <span className="text-gray-400 text-xs" title={`$${row.total_cost_usd.toFixed(4)} USD`}>
+                                R$ {row.total_cost_brl.toFixed(4)}
+                              </span>
+                            ) : row.total_cost_usd > 0 ? (
+                              <span className="text-gray-400 text-xs">${row.total_cost_usd.toFixed(4)}</span>
+                            ) : null}
                           </div>
                         </div>
                       ))}

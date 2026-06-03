@@ -99,9 +99,11 @@ async function persistAiLog(entry: {
   duration_ms: number
 }): Promise<void> {
   try {
-    const { db } = await import('@/drizzle/db')
-    const { aiRequestLogs } = await import('@/drizzle/schema')
-    const { getUsdBrlRate } = await import('@/lib/exchange-rate')
+    const [{ db }, { aiRequestLogs }, { getUsdBrlRate }] = await Promise.all([
+      import('@/drizzle/db'),
+      import('@/drizzle/schema'),
+      import('@/lib/exchange-rate'),
+    ])
     const rate = entry.cost_usd > 0 ? await getUsdBrlRate() : null
     await db.insert(aiRequestLogs).values({
       ...entry,
