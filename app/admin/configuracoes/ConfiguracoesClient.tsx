@@ -46,6 +46,8 @@ const FEATURE_LABELS: Record<string, string> = {
   briefing_generation: 'Geração de Briefing',
   prompt_generation: 'Geração de Prompts',
   theme_suggestion: 'Sugestão de Temas',
+  category_matching: 'Correspondência de Categorias',
+  url_extraction: 'Extração de URLs (Crawler)',
 }
 
 const SIDEBAR_ITEMS: { id: SectionId; label: string; icon: string }[] = [
