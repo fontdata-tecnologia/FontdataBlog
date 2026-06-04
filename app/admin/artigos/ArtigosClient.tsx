@@ -23,7 +23,6 @@ import NewArticleModal from './NewArticleModal'
 import AgentsSection from './AgentsSection'
 import RSSSection from './RSSSection'
 import FontesClient from '../fontes/FontesClient'
-import LogsSection from './LogsSection'
 import type { Post, Category, Tag } from '@/lib/admin-types'
 import type { ArticleGenerationConfig, ArticleVoiceTone, ArticleLanguage } from '@/lib/article-config-types'
 import { ARTICLE_CONFIG_DEFAULTS } from '@/lib/article-config-types'
@@ -55,8 +54,6 @@ const SIDEBAR_ITEMS: { id: SectionId; label: string; icon: ReactNode }[] = [
 export default function ArtigosClient() {
   usePageTitle('Artigos')
   const [activeSection, setActiveSection] = useState<SectionId>('lista')
-  const [logsModalOpen, setLogsModalOpen] = useState(false)
-
   function renderContent() {
     switch (activeSection) {
       case 'lista':
@@ -88,31 +85,6 @@ export default function ArtigosClient() {
 
   return (
     <div>
-      <div className="flex items-center justify-end mb-8">
-        <button
-          onClick={() => setLogsModalOpen(true)}
-          title="Logs de Geração"
-          className="p-2 rounded-lg text-gray-400 hover:text-brand-primary hover:bg-brand-primary/5 transition-colors"
-        >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-            <polyline points="14 2 14 8 20 8" />
-            <line x1="16" y1="13" x2="8" y2="13" />
-            <line x1="16" y1="17" x2="8" y2="17" />
-            <polyline points="10 9 9 9 8 9" />
-          </svg>
-        </button>
-      </div>
-
       <div className="flex gap-6">
         <nav className="w-56 shrink-0">
           <ul className="bg-white rounded-xl border border-gray-200 overflow-hidden">
@@ -136,44 +108,6 @@ export default function ArtigosClient() {
 
         <div className="flex-1 min-w-0">{renderContent()}</div>
       </div>
-
-      {logsModalOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={() => setLogsModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h2 className="text-base font-semibold text-neutral-900">Logs de Geração</h2>
-              <button
-                onClick={() => setLogsModalOpen(false)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-                aria-label="Fechar"
-              >
-                <svg
-                  width="17"
-                  height="17"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-            <div className="overflow-y-auto flex-1 p-6">
-              <LogsSection />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
