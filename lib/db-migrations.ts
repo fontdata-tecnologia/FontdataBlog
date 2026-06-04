@@ -18,9 +18,22 @@ interface Journal {
   entries: JournalEntry[]
 }
 
+function getMigrationsDir(): string {
+  // Tenta múltiplos caminhos para compatibilidade com dev local e Vercel (/var/task)
+  const candidates = [
+    path.join(process.cwd(), 'drizzle', 'migrations'),
+    path.join(__dirname, '..', 'drizzle', 'migrations'),
+    path.join(__dirname, '..', '..', 'drizzle', 'migrations'),
+  ]
+  for (const dir of candidates) {
+    if (fs.existsSync(path.join(dir, 'meta', '_journal.json'))) return dir
+  }
+  return path.join(process.cwd(), 'drizzle', 'migrations')
+}
+
 function readJournal(): string[] {
   try {
-    const journalPath = path.join(process.cwd(), 'drizzle', 'migrations', 'meta', '_journal.json')
+    const journalPath = path.join(getMigrationsDir(), 'meta', '_journal.json')
     const raw = fs.readFileSync(journalPath, 'utf-8')
     const journal: Journal = JSON.parse(raw)
     return journal.entries.map((e) => e.tag)
@@ -36,18 +49,44 @@ async function getAppliedMigrations(): Promise<string[]> {
     )
     return (rows as unknown as { migration_name: string }[]).map((r) => r.migration_name)
   } catch (err) {
-    // 42P01 = undefined_table (banco em branco)
+    // 42P01 = undefined_table (banco em branco ou migrations ainda não rodaram)
     const pgCode = (err as { code?: string })?.code
     if (pgCode === '42P01') return []
     throw err
   }
 }
 
+async function isSiteSettingsAbsent(): Promise<boolean> {
+  try {
+    await db.execute(sql`SELECT 1 FROM site_settings LIMIT 1`)
+    return false
+  } catch (err) {
+    const pgCode = (err as { code?: string })?.code
+    return pgCode === '42P01'
+  }
+}
+
 export async function getDbPendingMigrations(): Promise<string[]> {
   const all = readJournal()
-  if (all.length === 0) return []
+
+  // Se o journal não foi encontrado no bundle, ainda detecta banco vazio via site_settings
+  if (all.length === 0) {
+    const absent = await isSiteSettingsAbsent()
+    // Banco em branco mas sem journal acessível — retorna marcador especial
+    return absent ? ['__banco_sem_schema__'] : []
+  }
+
   const applied = await getAppliedMigrations()
-  return all.filter((tag) => !applied.includes(tag))
+  const pending = all.filter((tag) => !applied.includes(tag))
+
+  // Mesmo que drizzle_migrations não exista ainda, verifica se site_settings existe
+  // (pode ter sido criado manualmente sem usar este migrator)
+  if (pending.length === all.length) {
+    const absent = await isSiteSettingsAbsent()
+    if (!absent) return [] // banco tem tabelas, só não usou drizzle_migrations
+  }
+
+  return pending
 }
 
 export async function ensureMigrationsTable(): Promise<void> {
@@ -61,7 +100,13 @@ export async function ensureMigrationsTable(): Promise<void> {
 }
 
 export async function applyMigration(tag: string): Promise<void> {
-  const sqlPath = path.join(process.cwd(), 'drizzle', 'migrations', `${tag}.sql`)
+  // Tag especial quando journal não foi encontrado mas banco está vazio
+  if (tag === '__banco_sem_schema__') {
+    throw new Error('Arquivos de migration não encontrados no bundle. Rode npm run db:migrate localmente com a DATABASE_URL correta.')
+  }
+
+  const migrationsDir = getMigrationsDir()
+  const sqlPath = path.join(migrationsDir, `${tag}.sql`)
   let raw: string
   try {
     raw = fs.readFileSync(sqlPath, 'utf-8')

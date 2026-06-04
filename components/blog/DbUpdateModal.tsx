@@ -18,6 +18,8 @@ type LogLine = {
 
 type ModalState = 'idle' | 'running' | 'done' | 'error'
 
+const NO_SCHEMA_MARKER = '__banco_sem_schema__'
+
 export function DbUpdateModal({ pending }: Props) {
   const [state, setState] = useState<ModalState>('idle')
   const [logs, setLogs] = useState<LogLine[]>([])
@@ -30,6 +32,9 @@ export function DbUpdateModal({ pending }: Props) {
   }, [logs])
 
   if (pending.length === 0) return null
+
+  // Caso especial: banco vazio mas arquivos .sql não acessíveis no bundle
+  const noSchema = pending.includes(NO_SCHEMA_MARKER)
 
   async function runMigrate() {
     setState('running')
@@ -122,7 +127,9 @@ export function DbUpdateModal({ pending }: Props) {
             <h2 className="text-[15px] font-semibold text-neutral-900">Atualização necessária</h2>
             <p className="text-[13px] text-gray-500 mt-0.5">
               {state === 'idle'
-                ? 'O banco de dados está desatualizado.'
+                ? noSchema
+                  ? 'O banco de dados não tem schema criado.'
+                  : 'O banco de dados está desatualizado.'
                 : state === 'running'
                 ? 'Aplicando migrations...'
                 : state === 'done'
@@ -134,7 +141,16 @@ export function DbUpdateModal({ pending }: Props) {
 
         {/* Body */}
         <div className="px-6 py-5">
-          {state === 'idle' && (
+          {state === 'idle' && noSchema && (
+            <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 mb-4">
+              <p className="text-[13px] text-amber-800 font-medium mb-1">Banco em branco detectado</p>
+              <p className="text-[13px] text-amber-700">
+                O banco de dados existe mas não tem nenhuma tabela criada. Clique em &quot;Atualizar agora&quot; para criar o schema completo.
+              </p>
+            </div>
+          )}
+
+          {state === 'idle' && !noSchema && (
             <>
               <p className="text-[13px] text-gray-600 mb-3">
                 As seguintes migrations serão aplicadas:
