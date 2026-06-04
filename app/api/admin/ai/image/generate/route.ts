@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { z } from 'zod'
 import { verifyToken } from '@/lib/auth'
 import { aiChat, callOpenRouterImage, getPromptFromDB } from '@/lib/ai'
 import { getAgentsExtra } from '@/lib/firecrawl'
@@ -7,6 +8,14 @@ import { getPexelsApiKey, searchPexelsPhoto } from '@/lib/pexels'
 import { supabaseAdmin, STORAGE_BUCKET, normalizeImageMime } from '@/lib/supabase-admin'
 import { getSettings } from '@/lib/settings'
 import { generateGradientCover, generateGeometricCover } from '@/lib/cover-svg'
+
+const requestBodySchema = z.object({
+  title: z.string().min(1, 'Título do artigo é obrigatório'),
+  excerpt: z.string().optional(),
+  content: z.string().optional(),
+  image_source: z.enum(['ai', 'pexels', 'code']).optional(),
+  code_style: z.enum(['gradient', 'geometric']).optional(),
+})
 
 export const dynamic = 'force-dynamic'
 
@@ -44,11 +53,14 @@ async function uploadBufferToStorage(
   return publicUrl
 }
 
-async function handleCode(title: string): Promise<NextResponse> {
+async function handleCode(
+  title: string,
+  codeStyleOverride?: 'gradient' | 'geometric'
+): Promise<NextResponse> {
   // Geração de capa via código SVG (sem IA, sem custo externo) — espelha o
   // comportamento do Designer agent em lib/agents/designer.ts para a opção 'code'.
   const extra = await getAgentsExtra()
-  const codeStyle = extra['designer']?.code_style ?? 'gradient'
+  const codeStyle = codeStyleOverride ?? extra['designer']?.code_style ?? 'gradient'
   const settings = await getSettings()
   const { primary, secondary } = settings.colors
 
@@ -184,23 +196,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Não autenticado' }, { status: 401 })
   }
 
-  const body = await request.json()
-  const { title, excerpt, content } = body as {
-    title?: string
-    excerpt?: string
-    content?: string
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: 'Body inválido' }, { status: 400 })
   }
 
-  if (!title) {
-    return NextResponse.json({ error: 'Título do artigo é obrigatório' }, { status: 400 })
+  const parsed = requestBodySchema.safeParse(rawBody)
+  if (!parsed.success) {
+    const firstIssue = parsed.error.issues[0]
+    const message =
+      firstIssue.path.includes('title')
+        ? 'Título do artigo é obrigatório'
+        : firstIssue.path.includes('image_source')
+          ? 'Fonte de imagem inválida'
+          : firstIssue.message
+    return NextResponse.json({ error: message }, { status: 400 })
   }
+
+  const { title, excerpt, content, image_source, code_style } = parsed.data
 
   try {
     const extra = await getAgentsExtra()
-    const imageSource = extra['designer']?.image_source ?? 'pexels'
+    const imageSource: string =
+      image_source ?? extra['designer']?.image_source ?? 'pexels'
 
     if (imageSource === 'code') {
-      return await handleCode(title)
+      return await handleCode(title, code_style)
     } else if (imageSource === 'pexels') {
       return await handlePexels(title)
     } else {
