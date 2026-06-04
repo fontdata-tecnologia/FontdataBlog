@@ -57,9 +57,45 @@ Before any schema change, load `supabase-postgres-best-practices` to follow inde
 
 1. Add or modify tables in `drizzle/schema.ts`
 2. Run `npm run db:generate` then `npm run db:migrate` after every schema change
-3. Write or update reusable queries in `lib/db-queries.ts`
-4. Design indexes for performance (foreign keys always get indexes, partial indexes for filtered queries)
-5. Provide pg_cron SQL snippets when a new scheduled task requires DB setup
+3. **Propagar a mudança de schema para os mecanismos de produção** (ver "Protocolo de paridade do schema" abaixo) — `db:generate` sozinho NÃO atualiza o banco em produção
+4. Write or update reusable queries in `lib/db-queries.ts`
+5. Design indexes for performance (foreign keys always get indexes, partial indexes for filtered queries)
+6. Provide pg_cron SQL snippets when a new scheduled task requires DB setup
+
+## Protocolo de paridade do schema (OBRIGATÓRIO em toda mudança de schema)
+
+**Em produção (Vercel) o banco NÃO é atualizado por `npm run db:migrate`.** O deploy
+não roda migrations. Quem aplica o schema no banco do usuário é:
+
+| Mecanismo | Arquivo | Quando roda |
+|---|---|---|
+| Instalação inicial | `drizzle/setup-sql.ts` (`SETUP_SQL`) | uma vez, no `/setup` |
+| Atualização (modal) | `lib/migrations-embedded.ts` + `lib/db-migrations.ts` | quando o usuário admin entra e o `DbUpdateModal` detecta drift |
+
+Por isso, **toda alteração em `drizzle/schema.ts` (nova tabela, nova coluna, novo índice)
+DEVE ser propagada manualmente para os DOIS mecanismos** — senão o código de produção
+vai esperar uma tabela/coluna que o banco do usuário não tem, e o erro só aparece em
+runtime (ex: `500 relation "x" does not exist`).
+
+Checklist a executar SEMPRE que mexer em `drizzle/schema.ts`:
+
+1. `npm run db:generate` — gera a nova migration `.sql` em `drizzle/migrations/`
+2. Copiar o conteúdo da nova migration `.sql` para `lib/migrations-embedded.ts`:
+   - adicionar a entrada em `EMBEDDED_MIGRATIONS` (string com os statements separados por `--> statement-breakpoint`)
+   - adicionar a tag em `MIGRATION_ORDER` na ordem correta
+3. Adicionar a constante de tabela em `EXPECTED_TABLES` (em `lib/db-migrations.ts`) se for **tabela nova** — é isso que faz o modal detectar a falta dela
+4. Sincronizar `drizzle/setup-sql.ts` — adicionar `CREATE TABLE IF NOT EXISTS` / coluna / índice equivalente para que instalações novas nasçam completas
+5. **Idempotência**: todos os statements embutidos devem poder rodar sobre um banco em
+   qualquer estado de drift. Use `IF NOT EXISTS` em CREATE TABLE/INDEX/ADD COLUMN. Para
+   `ADD CONSTRAINT` (que não suporta `IF NOT EXISTS`), confie no `applyMigration` que já
+   ignora os códigos `42P07`/`42710`/`42701`
+6. `npm run db:migrate` localmente para validar que a migration aplica limpa
+7. `npm run build` — garante que não há erro de tipo
+
+Se você só rodar `db:generate`/`db:migrate` e esquecer os passos 2–4, o bug se repete:
+banco de produção desatualizado e o modal sem detectar. **Nunca encerre uma mudança de
+schema sem a paridade `schema.ts` ⟺ `setup-sql.ts` ⟺ `migrations-embedded.ts` completa.**
+Ref: `docs/bugs/banco-desatualizado-modal-nao-detecta-drift.md`.
 
 ## Constraints — NEVER do these
 
@@ -105,3 +141,7 @@ export const postMyItems = pgTable('post_my_items', {
 - [ ] `npm run build` passes (no TS errors from schema changes)
 - [ ] Every new FK column has a corresponding index
 - [ ] No `prepare: true` in connection config
+- [ ] **Paridade de schema**: nova migration copiada para `lib/migrations-embedded.ts` (`EMBEDDED_MIGRATIONS` + `MIGRATION_ORDER`)
+- [ ] **Paridade de schema**: tabela nova adicionada em `EXPECTED_TABLES` (`lib/db-migrations.ts`)
+- [ ] **Paridade de schema**: `drizzle/setup-sql.ts` sincronizado com `IF NOT EXISTS`
+- [ ] **Idempotência**: statements embutidos usam `IF NOT EXISTS` (rodam sobre banco em qualquer estado)

@@ -13,7 +13,7 @@ const hexColor = z
   .regex(/^#[0-9A-Fa-f]{6}$/, 'Cor inválida (use formato #RRGGBB)')
 
 const putSchema = z.object({
-  template: z.enum(['default', 'portal', 'business', 'news', 'tech']).optional(),
+  template: z.enum(['default', 'portal', 'business', 'news', 'tech', 'minimal', 'magazine', 'dark-aurora']).optional(),
   colors: z
     .object({
       primary: hexColor,

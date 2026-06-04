@@ -138,6 +138,35 @@ async function getMissingTables(): Promise<string[]> {
 }
 
 /**
+ * Colunas críticas que devem existir para o sistema funcionar corretamente.
+ * Formato: { table: string; column: string }[]
+ * Se alguma estiver faltando, todas as migrations são re-aplicadas de forma idempotente.
+ */
+const EXPECTED_COLUMNS = [
+  { table: 'newsletter_subscribers', column: 'unsubscribe_token' },
+  { table: 'posts', column: 'newsletter_sent_at' },
+] as const
+
+/** Retorna true se alguma coluna crítica estiver faltando no banco. */
+async function hasMissingColumns(): Promise<boolean> {
+  try {
+    for (const { table, column } of EXPECTED_COLUMNS) {
+      const rows = await db.execute(
+        sql`SELECT 1 FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = ${table}
+              AND column_name = ${column}
+            LIMIT 1`
+      )
+      if ((rows as unknown[]).length === 0) return true
+    }
+    return false
+  } catch {
+    return false
+  }
+}
+
+/**
  * Flag de processo: uma vez que o schema esteja completo (sem tabelas faltando e
  * sem migrations pendentes), curto-circuita as próximas chamadas retornando []
  * imediatamente. Só o estado "completo" é cacheado — se houver pendências, a
@@ -153,11 +182,18 @@ export async function getDbPendingMigrations(): Promise<string[]> {
   const pendingByVersion = MIGRATION_ORDER.filter((tag) => !applied.includes(tag))
 
   // Verificação de drift real: mesmo que drizzle_migrations registre tudo aplicado,
-  // se uma tabela esperada não existir no banco retornamos as migrations pendentes.
+  // se uma tabela ou coluna crítica não existir no banco retornamos as migrations pendentes.
   const missing = await getMissingTables()
   if (missing.length > 0) {
     // Retorna TODAS as migrations em ordem para que o applyMigration idempotente
     // recrie apenas o que está faltando.
+    return MIGRATION_ORDER
+  }
+
+  const columnsMissing = await hasMissingColumns()
+  if (columnsMissing) {
+    // Coluna crítica ausente — re-aplica migrations a partir de onde a coluna foi adicionada.
+    // Como applyMigration é idempotente, retornar todas é seguro.
     return MIGRATION_ORDER
   }
 

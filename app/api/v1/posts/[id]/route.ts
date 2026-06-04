@@ -6,6 +6,7 @@ import { posts, postCategories, postTags, categories, tags } from '@/drizzle/sch
 import { eq } from 'drizzle-orm'
 import { verifyApiToken } from '@/lib/api-auth'
 import { revalidatePublicPosts } from '@/lib/revalidate'
+import { triggerNewsletterSend } from '@/lib/newsletter-trigger'
 
 const sanitizeOptions: sanitizeHtml.IOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h2', 'h3', 'img']),
@@ -132,6 +133,14 @@ export async function PUT(
 
     if (existing[0].slug !== updated.slug) revalidatePublicPosts(existing[0].slug)
     revalidatePublicPosts(updated.slug)
+
+    // Dispara newsletter quando o post passa a estar publicado (independente de o
+    // body incluir `status`). Usa o estado persistido (`updated`) como verdade; o
+    // guard interno de newsletter_sent_at em triggerNewsletterSend evita reenvio.
+    const wasPublishedV1 = existing[0].status === 'published'
+    if (updated.status === 'published' && !wasPublishedV1) {
+      triggerNewsletterSend(updated.id)
+    }
 
     return NextResponse.json({ post: updated })
   } catch {

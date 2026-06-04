@@ -129,6 +129,24 @@ const COLOR_DEFAULTS: Record<string, ThemeColors> = {
     background: '#F4F4F4',
     surface: '#FFFFFF',
   },
+  minimal: {
+    primary: '#111111',
+    secondary: '#6B7280',
+    background: '#FFFFFF',
+    surface: '#FFFFFF',
+  },
+  magazine: {
+    primary: '#1A1A1A',
+    secondary: '#C8102E',
+    background: '#F8F5F0',
+    surface: '#FFFFFF',
+  },
+  'dark-aurora': {
+    primary: '#8B5CF6',
+    secondary: '#22D3EE',
+    background: '#0B0F1A',
+    surface: '#141824',
+  },
 }
 
 export function defaultColors(template: string): ThemeColors {

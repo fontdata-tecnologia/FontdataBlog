@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect, KeyboardEvent } from 'react'
+import { usePageTitle } from '@/components/admin/AdminPageTitleContext'
 import type { Tag } from '@/lib/admin-types'
 
 export default function TagsPage() {
+  usePageTitle('Tags')
   const [tags, setTags] = useState<Tag[]>([])
   const [input, setInput] = useState('')
   const [error, setError] = useState('')
@@ -42,8 +44,6 @@ export default function TagsPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-neutral-900 mb-6">Tags</h1>
-
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <div className="flex gap-3">
           <input

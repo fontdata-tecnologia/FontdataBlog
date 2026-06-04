@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { usePageTitle } from '@/components/admin/AdminPageTitleContext'
 import Link from 'next/link'
 import {
   Chart as ChartJS,
@@ -240,6 +241,7 @@ const STATUS_TONE: Record<string, { dot: string; label: string }> = {
 }
 
 export default function DashboardClient() {
+  usePageTitle('Dashboard')
   const { theme } = useAdminTheme()
   const isDark = theme === 'dark'
 

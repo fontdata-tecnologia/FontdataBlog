@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { z } from 'zod'
 import { db } from '@/drizzle/db'
 import { newsletterSubscribers } from '@/drizzle/schema'
 import { eq } from 'drizzle-orm'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 
 export const dynamic = 'force-dynamic'
 
@@ -37,7 +39,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: true })
     }
 
-    await db.insert(newsletterSubscribers).values({ email })
+    const [inserted] = await db
+      .insert(newsletterSubscribers)
+      .values({ email, unsubscribe_token: randomUUID() })
+      .returning()
+
+    dispatchWebhookEvent('newsletter_subscribed', {
+      subscriber_id: inserted.id,
+      email: inserted.email,
+      status: inserted.status,
+      subscribed_at: inserted.subscribed_at,
+    })
+
     return NextResponse.json({ ok: true })
   } catch {
     return NextResponse.json({ error: 'Erro interno do servidor.' }, { status: 500 })

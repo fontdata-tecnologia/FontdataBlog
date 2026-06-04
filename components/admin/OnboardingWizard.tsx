@@ -2,6 +2,36 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+// CompanyInfo type and default — kept inline to avoid importing server-side DB modules
+interface CompanyInfo {
+  logo_url: string
+  blog_name: string
+  blog_description: string
+  company_name: string
+  company_email: string
+  company_phone: string
+  company_address: string
+  company_cnpj: string
+  social_facebook: string
+  social_instagram: string
+  social_twitter: string
+  social_youtube: string
+}
+
+const DEFAULT_COMPANY: CompanyInfo = {
+  logo_url: '',
+  blog_name: '',
+  blog_description: '',
+  company_name: '',
+  company_email: '',
+  company_phone: '',
+  company_address: '',
+  company_cnpj: '',
+  social_facebook: '',
+  social_instagram: '',
+  social_twitter: '',
+  social_youtube: '',
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,6 +68,7 @@ type WizardStep =
   | 'api_key'
   | 'pexels'
   | 'briefing'
+  | 'company'
   | 'themes'
   | 'generate'
   | 'success'
@@ -70,7 +101,7 @@ const STATUS_ICONS: Record<string, string> = {
 }
 
 // Steps in order — used to determine progress bar width and skip logic
-const STEP_ORDER: WizardStep[] = ['welcome', 'api_key', 'pexels', 'briefing', 'themes', 'generate', 'success']
+const STEP_ORDER: WizardStep[] = ['welcome', 'api_key', 'pexels', 'briefing', 'company', 'themes', 'generate', 'success']
 
 // ---------------------------------------------------------------------------
 // Component
@@ -101,6 +132,13 @@ export default function OnboardingWizard() {
   const [briefingUrl, setBriefingUrl] = useState('')
   const [briefingContent, setBriefingContent] = useState('')
   const [generatingBriefing, setGeneratingBriefing] = useState(false)
+
+  // Step: company
+  const [company, setCompany] = useState<CompanyInfo>({ ...DEFAULT_COMPANY })
+  const [loadingCompany, setLoadingCompany] = useState(false)
+  const [savingCompany, setSavingCompany] = useState(false)
+  // Tracks which fields were pre-filled from the briefing
+  const [briefingFilledFields, setBriefingFilledFields] = useState<Set<keyof CompanyInfo>>(new Set())
 
   // Step: themes
   const [themes, setThemes] = useState<ArticleTheme[]>([])
@@ -215,6 +253,15 @@ export default function OnboardingWizard() {
     if (step === 'themes') {
       loadThemes()
     }
+  }, [step])
+
+  // Load company data (from briefing parse) when entering company step
+  useEffect(() => {
+    if (step === 'company') {
+      persistStep('company')
+      loadCompanyFromBriefing()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step])
 
   // ---------------------------------------------------------------------------
@@ -359,9 +406,71 @@ export default function OnboardingWizard() {
         showToast('error', 'Erro ao salvar briefing')
         return
       }
-      goToStep('themes')
+      goToStep('company')
     } catch {
       showToast('error', 'Erro ao salvar briefing')
+    }
+  }
+
+  async function loadCompanyFromBriefing() {
+    setLoadingCompany(true)
+    setBriefingFilledFields(new Set())
+    try {
+      const res = await fetch('/api/admin/briefing/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // Pass the in-memory briefing if it exists; otherwise the route reads from DB
+        body: JSON.stringify(briefingContent.trim() ? { briefing_content: briefingContent } : {}),
+      })
+      if (!res.ok) {
+        // Non-blocking: just leave fields blank
+        return
+      }
+      const data = await res.json() as { company?: Partial<CompanyInfo> }
+      if (data.company) {
+        const extracted = data.company
+        const filled = new Set<keyof CompanyInfo>()
+        const merged: CompanyInfo = { ...DEFAULT_COMPANY }
+        for (const key of Object.keys(DEFAULT_COMPANY) as (keyof CompanyInfo)[]) {
+          const val = extracted[key]
+          if (val && val.trim()) {
+            merged[key] = val
+            filled.add(key)
+          }
+        }
+        setCompany(merged)
+        setBriefingFilledFields(filled)
+      }
+    } catch {
+      // Fail silently — user can fill manually
+    } finally {
+      setLoadingCompany(false)
+    }
+  }
+
+  function handleCompanyChange(key: keyof CompanyInfo, value: string) {
+    setCompany((prev) => ({ ...prev, [key]: value }))
+  }
+
+  async function handleSaveCompanyAndAdvance() {
+    setSavingCompany(true)
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ company }),
+      })
+      if (!res.ok) {
+        const data = await res.json() as { error?: string }
+        showToast('error', data.error || 'Erro ao salvar dados da empresa')
+        return
+      }
+      showToast('success', 'Dados salvos com sucesso')
+      goToStep('themes')
+    } catch {
+      showToast('error', 'Erro ao salvar dados da empresa')
+    } finally {
+      setSavingCompany(false)
     }
   }
 
@@ -598,6 +707,7 @@ export default function OnboardingWizard() {
                   'Conectar API de IA',
                   'Capas gratuitas (Pexels)',
                   'Briefing da empresa',
+                  'Dados da empresa',
                   'Gerar temas',
                   'Criar primeiro artigo',
                 ].map((item, i) => (
@@ -776,6 +886,140 @@ export default function OnboardingWizard() {
                 className="w-full bg-brand-primary text-white py-3 rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Salvar e continuar
+              </button>
+            </div>
+          )}
+
+          {/* STEP: company */}
+          {step === 'company' && (
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-lg font-bold text-neutral-900 mb-1">Dados do blog e empresa</h2>
+                <p className="text-sm text-gray-500">
+                  Revise e complete os dados extraídos do briefing. Campos marcados foram preenchidos automaticamente pela IA.
+                </p>
+              </div>
+
+              {loadingCompany ? (
+                <div className="space-y-3 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-1/3" />
+                  <div className="h-9 bg-gray-100 rounded w-full" />
+                  <div className="h-4 bg-gray-200 rounded w-1/3" />
+                  <div className="h-16 bg-gray-100 rounded w-full" />
+                  <div className="h-4 bg-gray-200 rounded w-1/4 mt-4" />
+                  <div className="h-9 bg-gray-100 rounded w-full" />
+                  <div className="h-9 bg-gray-100 rounded w-full" />
+                </div>
+              ) : (
+                <>
+                  {/* Blog section */}
+                  <div className="space-y-3">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Blog</h3>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium text-gray-700">Nome do Blog</label>
+                        {briefingFilledFields.has('blog_name') && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary font-medium">
+                            extraído do briefing
+                          </span>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={company.blog_name}
+                        onChange={(e) => handleCompanyChange('blog_name', e.target.value)}
+                        placeholder="Ex: Meu Blog"
+                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary ${
+                          briefingFilledFields.has('blog_name')
+                            ? 'border-brand-primary/30 bg-brand-primary/5'
+                            : 'border-gray-300'
+                        }`}
+                      />
+                    </div>
+
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-sm font-medium text-gray-700">Descrição do Blog</label>
+                        {briefingFilledFields.has('blog_description') && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary font-medium">
+                            extraído do briefing
+                          </span>
+                        )}
+                      </div>
+                      <textarea
+                        value={company.blog_description}
+                        onChange={(e) => handleCompanyChange('blog_description', e.target.value)}
+                        placeholder="Uma breve descrição sobre o blog..."
+                        rows={3}
+                        className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary resize-none ${
+                          briefingFilledFields.has('blog_description')
+                            ? 'border-brand-primary/30 bg-brand-primary/5'
+                            : 'border-gray-300'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Company section */}
+                  <div className="space-y-3 pt-2">
+                    <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Dados da Empresa</h3>
+
+                    {(
+                      [
+                        { key: 'company_name' as const, label: 'Nome da Empresa', placeholder: 'Ex: Minha Empresa Ltda' },
+                        { key: 'company_cnpj' as const, label: 'CNPJ', placeholder: '00.000.000/0001-00' },
+                        { key: 'company_email' as const, label: 'E-mail de Contato', placeholder: 'contato@empresa.com.br' },
+                        { key: 'company_phone' as const, label: 'Telefone', placeholder: '(00) 00000-0000' },
+                        { key: 'company_address' as const, label: 'Endereço', placeholder: 'Rua Exemplo, 123 - Cidade/UF', multiline: true },
+                      ] as { key: keyof CompanyInfo; label: string; placeholder: string; multiline?: boolean }[]
+                    ).map((field) => (
+                      <div key={field.key}>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-sm font-medium text-gray-700">{field.label}</label>
+                          {briefingFilledFields.has(field.key) && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-brand-primary/10 text-brand-primary font-medium">
+                              extraído do briefing
+                            </span>
+                          )}
+                        </div>
+                        {field.multiline ? (
+                          <textarea
+                            value={company[field.key]}
+                            onChange={(e) => handleCompanyChange(field.key, e.target.value)}
+                            placeholder={field.placeholder}
+                            rows={2}
+                            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary resize-none ${
+                              briefingFilledFields.has(field.key)
+                                ? 'border-brand-primary/30 bg-brand-primary/5'
+                                : 'border-gray-300'
+                            }`}
+                          />
+                        ) : (
+                          <input
+                            type="text"
+                            value={company[field.key]}
+                            onChange={(e) => handleCompanyChange(field.key, e.target.value)}
+                            placeholder={field.placeholder}
+                            className={`w-full border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary ${
+                              briefingFilledFields.has(field.key)
+                                ? 'border-brand-primary/30 bg-brand-primary/5'
+                                : 'border-gray-300'
+                            }`}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              <button
+                onClick={handleSaveCompanyAndAdvance}
+                disabled={savingCompany || loadingCompany}
+                className="w-full bg-brand-primary text-white py-3 rounded-xl font-semibold text-sm hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {savingCompany ? 'Salvando...' : 'Salvar e continuar'}
               </button>
             </div>
           )}

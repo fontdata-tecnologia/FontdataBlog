@@ -14,6 +14,7 @@ import {
 } from '@/components/admin/icons/ExpxIcons'
 
 import { useState, useEffect, Suspense, KeyboardEvent, type ReactNode } from 'react'
+import { usePageTitle } from '@/components/admin/AdminPageTitleContext'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
@@ -51,6 +52,7 @@ const SIDEBAR_ITEMS: { id: SectionId; label: string; icon: ReactNode }[] = [
 ]
 
 export default function ArtigosClient() {
+  usePageTitle('Artigos')
   const [activeSection, setActiveSection] = useState<SectionId>('lista')
   const [logsModalOpen, setLogsModalOpen] = useState(false)
 
@@ -85,8 +87,7 @@ export default function ArtigosClient() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-neutral-900">Artigos</h1>
+      <div className="flex items-center justify-end mb-8">
         <button
           onClick={() => setLogsModalOpen(true)}
           title="Logs de Geração"

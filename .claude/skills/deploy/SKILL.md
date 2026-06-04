@@ -52,6 +52,25 @@ npm run build
 - If lint or build fails: fix the errors, re-run, then continue.
 - Do NOT skip or `--no-verify` around these checks.
 
+### 3.5. Paridade de schema (se `drizzle/schema.ts` mudou)
+
+Se o diff incluir `drizzle/schema.ts`, verifique a paridade ANTES de commitar — em
+produção o banco do usuário NÃO é atualizado por `db:migrate`; ele é atualizado pelo
+`DbUpdateModal`, que só detecta o que estiver declarado nos mecanismos do código:
+
+```bash
+git diff --name-only | grep -q "drizzle/schema.ts" && echo "SCHEMA MUDOU — verifique paridade"
+```
+
+Se mudou, confirme que estão no diff (senão o banco de produção ficará incompatível):
+- `lib/migrations-embedded.ts` — nova migration em `EMBEDDED_MIGRATIONS` + tag em `MIGRATION_ORDER`
+- `lib/db-migrations.ts` — tabela nova em `EXPECTED_TABLES`
+- `drizzle/setup-sql.ts` — `CREATE TABLE IF NOT EXISTS` / coluna / índice equivalente
+
+Se faltar qualquer um, **pare e chame o `db-engineer`** para completar a paridade
+(Protocolo de paridade do schema) antes de seguir. Ref:
+`docs/bugs/banco-desatualizado-modal-nao-detecta-drift.md`.
+
 ### 4. Commit
 
 Stage only the files relevant to this change (never `git add -A` blindly):
@@ -85,6 +104,9 @@ Print a short summary to the user:
 - Files committed
 - Commit hash (`git log -1 --oneline`)
 - Reminder that Vercel is deploying from the push
+- **Se o schema mudou**: avise que, após o deploy, ao entrar no `/admin` o sistema
+  exibirá o modal de atualização de banco — basta clicar "Atualizar agora" para manter
+  a compatibilidade entre código e banco.
 
 ---
 

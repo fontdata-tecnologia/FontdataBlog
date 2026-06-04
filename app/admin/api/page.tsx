@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { usePageTitle } from '@/components/admin/AdminPageTitleContext'
 import { Button } from '@/components/ui/Button'
 
 interface ApiToken {
@@ -14,6 +15,7 @@ interface ApiToken {
 }
 
 export default function AdminApiPage() {
+  usePageTitle('API', 'Gerencie os tokens de acesso à API pública do blog')
   const [tokens, setTokens] = useState<ApiToken[]>([])
   const [loading, setLoading] = useState(true)
   const [newName, setNewName] = useState('')
@@ -123,11 +125,7 @@ export default function AdminApiPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">API</h1>
-          <p className="text-sm text-gray-500 mt-1">Gerencie os tokens de acesso à API pública do blog</p>
-        </div>
+      <div className="flex items-center justify-end mb-8">
         <a
           href="/docs"
           target="_blank"

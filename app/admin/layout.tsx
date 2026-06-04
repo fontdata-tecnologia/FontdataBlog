@@ -5,6 +5,7 @@ import { verifyToken } from '@/lib/auth'
 import { getSettings } from '@/lib/settings'
 import { AdminThemeProvider } from '@/components/admin/AdminThemeProvider'
 import { AdminTopBar } from '@/components/admin/AdminTopBar'
+import { AdminPageTitleProvider } from '@/components/admin/AdminPageTitleContext'
 import { getDbPendingMigrations } from '@/lib/db-migrations'
 import { MIGRATION_ORDER } from '@/lib/migrations-embedded'
 import { DbUpdateModal } from '@/components/blog/DbUpdateModal'
@@ -139,14 +140,16 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </aside>
 
         {/* Main area */}
-        <div className="flex-1 admin-main flex flex-col overflow-hidden">
-          <AdminTopBar />
-          <div className="flex-1 overflow-y-auto">
-            <div className="p-8">
-              {children}
+        <AdminPageTitleProvider>
+          <div className="flex-1 admin-main flex flex-col overflow-hidden">
+            <AdminTopBar />
+            <div className="flex-1 overflow-y-auto">
+              <div className="p-8">
+                {children}
+              </div>
             </div>
           </div>
-        </div>
+        </AdminPageTitleProvider>
       </div>
     </AdminThemeProvider>
   )

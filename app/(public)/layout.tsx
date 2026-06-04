@@ -3,8 +3,14 @@ import { PortalHeader } from '@/components/layout/PortalHeader'
 import { BusinessHeader } from '@/components/layout/BusinessHeader'
 import { NewsHeader } from '@/components/layout/NewsHeader'
 import { TechHeader } from '@/components/layout/TechHeader'
+import { MinimalHeader } from '@/components/layout/MinimalHeader'
+import { MagazineHeader } from '@/components/layout/MagazineHeader'
+import { DarkAuroraHeader } from '@/components/layout/DarkAuroraHeader'
 import { Footer } from '@/components/layout/Footer'
 import { TechFooter } from '@/components/layout/TechFooter'
+import { MinimalFooter } from '@/components/layout/MinimalFooter'
+import { MagazineFooter } from '@/components/layout/MagazineFooter'
+import { DarkAuroraFooter } from '@/components/layout/DarkAuroraFooter'
 import { NewsletterSection } from '@/components/blog/NewsletterSection'
 import { getSettings } from '@/lib/settings'
 import { getAppUrl } from '@/lib/app-url'
@@ -42,28 +48,68 @@ export default async function PublicLayout({ children }: { children: React.React
             ? <NewsHeader blogName={blogName} logoUrl={logoUrl} />
             : template === 'tech'
               ? <TechHeader blogName={blogName} logoUrl={logoUrl} />
-              : <Header blogName={blogName} logoUrl={logoUrl} />
+              : template === 'minimal'
+                ? <MinimalHeader blogName={blogName} logoUrl={logoUrl} />
+                : template === 'magazine'
+                  ? <MagazineHeader blogName={blogName} logoUrl={logoUrl} />
+                  : template === 'dark-aurora'
+                    ? <DarkAuroraHeader blogName={blogName} logoUrl={logoUrl} />
+                    : <Header blogName={blogName} logoUrl={logoUrl} />
       }
       <main
         className={`flex-1 w-full mx-auto px-4 py-8 ${
-          template === 'portal' || template === 'business' || template === 'news' || template === 'tech'
+          template === 'portal' || template === 'business' || template === 'news' || template === 'tech' || template === 'magazine' || template === 'dark-aurora'
             ? 'max-w-7xl'
-            : 'max-w-6xl'
+            : template === 'minimal'
+              ? 'max-w-4xl'
+              : 'max-w-6xl'
         }`}
       >
         {children}
       </main>
       {newsletter.enabled && (
         <div className={`w-full mx-auto px-4 ${
-          template === 'portal' || template === 'business' || template === 'news' || template === 'tech'
+          template === 'portal' || template === 'business' || template === 'news' || template === 'tech' || template === 'magazine' || template === 'dark-aurora'
             ? 'max-w-7xl'
-            : 'max-w-6xl'
+            : template === 'minimal'
+              ? 'max-w-4xl'
+              : 'max-w-6xl'
         }`}>
           <NewsletterSection title={newsletter.title} subtitle={newsletter.subtitle} />
         </div>
       )}
       {template === 'tech' ? (
         <TechFooter
+          blogName={blogName}
+          companyName={company.company_name}
+          companyEmail={company.company_email}
+          socialFacebook={company.social_facebook}
+          socialInstagram={company.social_instagram}
+          socialTwitter={company.social_twitter}
+          socialYoutube={company.social_youtube}
+        />
+      ) : template === 'minimal' ? (
+        <MinimalFooter
+          blogName={blogName}
+          companyName={company.company_name}
+          companyEmail={company.company_email}
+          socialFacebook={company.social_facebook}
+          socialInstagram={company.social_instagram}
+          socialTwitter={company.social_twitter}
+          socialYoutube={company.social_youtube}
+        />
+      ) : template === 'magazine' ? (
+        <MagazineFooter
+          blogName={blogName}
+          companyName={company.company_name}
+          companyEmail={company.company_email}
+          socialFacebook={company.social_facebook}
+          socialInstagram={company.social_instagram}
+          socialTwitter={company.social_twitter}
+          socialYoutube={company.social_youtube}
+        />
+      ) : template === 'dark-aurora' ? (
+        <DarkAuroraFooter
           blogName={blogName}
           companyName={company.company_name}
           companyEmail={company.company_email}

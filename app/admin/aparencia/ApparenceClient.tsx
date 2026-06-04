@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, type ReactNode } from 'react'
+import { usePageTitle } from '@/components/admin/AdminPageTitleContext'
 import type { SiteSettings, ThemeColors, DesignSystem } from '@/lib/settings'
 import { DEFAULT_DESIGN_SYSTEM } from '@/lib/settings-constants'
 import { ImageUpload } from '@/components/ui/ImageUpload'
@@ -431,6 +432,209 @@ const TEMPLATE_OPTIONS = [
       </svg>
     ),
   },
+  {
+    id: 'minimal',
+    name: 'Minimal',
+    description: 'Ultra-clean, tipográfico, foco total no texto com muito whitespace',
+    preview: (
+      <svg viewBox="0 0 280 180" className="w-full" xmlns="http://www.w3.org/2000/svg">
+        {/* Browser chrome */}
+        <rect x="0" y="0" width="280" height="180" fill="#E4E7EC" rx="8" />
+        <rect x="2" y="2" width="276" height="176" fill="#FFFFFF" rx="7" />
+        <rect x="2" y="2" width="276" height="16" fill="#ECEEF2" rx="7" />
+        <circle cx="11" cy="10" r="3" fill="#FC5F57" />
+        <circle cx="20" cy="10" r="3" fill="#FEBC2E" />
+        <circle cx="29" cy="10" r="3" fill="#28C840" />
+        <rect x="60" y="6" width="130" height="8" fill="white" rx="3" opacity="0.8" />
+        {/* Centered header */}
+        <rect x="2" y="18" width="276" height="32" fill="#FFFFFF" />
+        <rect x="2" y="49" width="276" height="0.5" fill="#E5E7EB" />
+        {/* Blog name centered */}
+        <rect x="90" y="26" width="100" height="9" fill="#111111" rx="2" opacity="0.85" />
+        {/* Nav links centered */}
+        <rect x="70" y="40" width="18" height="3" fill="#D1D5DB" rx="1" />
+        <rect x="94" y="40" width="22" height="3" fill="#D1D5DB" rx="1" />
+        <rect x="122" y="40" width="18" height="3" fill="#D1D5DB" rx="1" />
+        <rect x="146" y="40" width="24" height="3" fill="#D1D5DB" rx="1" />
+        <rect x="176" y="40" width="16" height="3" fill="#D1D5DB" rx="1" />
+        {/* Large whitespace then centered article list */}
+        {/* Article 1 — divider style */}
+        <rect x="40" y="62" width="200" height="0.5" fill="#E5E7EB" />
+        <rect x="40" y="68" width="60" height="3.5" fill="#9CA3AF" rx="1" />
+        <rect x="40" y="75" width="190" height="6" fill="#111111" rx="1.5" opacity="0.85" />
+        <rect x="40" y="84" width="170" height="3.5" fill="#6B7280" rx="1" opacity="0.6" />
+        <rect x="40" y="91" width="140" height="3" fill="#D1D5DB" rx="1" opacity="0.6" />
+        {/* Article 2 */}
+        <rect x="40" y="104" width="200" height="0.5" fill="#E5E7EB" />
+        <rect x="40" y="110" width="50" height="3.5" fill="#9CA3AF" rx="1" />
+        <rect x="40" y="117" width="190" height="6" fill="#111111" rx="1.5" opacity="0.85" />
+        <rect x="40" y="126" width="160" height="3.5" fill="#6B7280" rx="1" opacity="0.6" />
+        <rect x="40" y="133" width="120" height="3" fill="#D1D5DB" rx="1" opacity="0.6" />
+        {/* Article 3 */}
+        <rect x="40" y="146" width="200" height="0.5" fill="#E5E7EB" />
+        <rect x="40" y="152" width="55" height="3.5" fill="#9CA3AF" rx="1" />
+        <rect x="40" y="159" width="185" height="6" fill="#111111" rx="1.5" opacity="0.85" />
+        {/* Footer minimal */}
+        <rect x="2" y="172" width="276" height="6" fill="#F9FAFB" />
+        <rect x="100" y="174" width="80" height="2" fill="#E5E7EB" rx="1" />
+      </svg>
+    ),
+  },
+  {
+    id: 'magazine',
+    name: 'Magazine',
+    description: 'Editorial de revista com tipografia serif grande e grid assimétrico',
+    preview: (
+      <svg viewBox="0 0 280 180" className="w-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="mag-img" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#D1D5DB" />
+            <stop offset="100%" stopColor="#B8BDC6" />
+          </linearGradient>
+          <linearGradient id="mag-img2" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#C8CDD7" />
+            <stop offset="100%" stopColor="#ADB4C0" />
+          </linearGradient>
+        </defs>
+        {/* Browser chrome */}
+        <rect x="0" y="0" width="280" height="180" fill="#E4E7EC" rx="8" />
+        <rect x="2" y="2" width="276" height="176" fill="#F8F5F0" rx="7" />
+        <rect x="2" y="2" width="276" height="16" fill="#ECEEF2" rx="7" />
+        <circle cx="11" cy="10" r="3" fill="#FC5F57" />
+        <circle cx="20" cy="10" r="3" fill="#FEBC2E" />
+        <circle cx="29" cy="10" r="3" fill="#28C840" />
+        <rect x="60" y="6" width="130" height="8" fill="white" rx="3" opacity="0.8" />
+        {/* Top strip: date */}
+        <rect x="2" y="18" width="276" height="8" fill="white" />
+        <rect x="2" y="25" width="276" height="0.5" fill="#E5E7EB" />
+        <rect x="12" y="21" width="80" height="2.5" fill="#9CA3AF" rx="1" />
+        <rect x="218" y="20" width="48" height="5" fill="#F3F4F6" rx="2" stroke="#E5E7EB" strokeWidth="0.5" />
+        {/* Masthead */}
+        <rect x="2" y="26" width="276" height="16" fill="#FFFFFF" />
+        <rect x="2" y="41" width="276" height="4" fill="#C8102E" />
+        {/* Large italic blog name */}
+        <rect x="50" y="29" width="180" height="10" fill="#1A1A1A" rx="2" opacity="0.9" />
+        {/* Dark nav strip */}
+        <rect x="2" y="45" width="276" height="12" fill="#1A1A1A" />
+        <rect x="12" y="49" width="18" height="3.5" fill="white" rx="1" opacity="0.9" />
+        <rect x="36" y="49" width="22" height="3.5" fill="white" rx="1" opacity="0.5" />
+        <rect x="64" y="49" width="18" height="3.5" fill="white" rx="1" opacity="0.5" />
+        <rect x="88" y="49" width="24" height="3.5" fill="white" rx="1" opacity="0.5" />
+        {/* Asymmetric grid: large left + right column */}
+        {/* Large feature */}
+        <rect x="8" y="62" width="162" height="90" fill="url(#mag-img)" rx="3" />
+        <rect x="8" y="118" width="162" height="34" fill="#1A1A1A" opacity="0.75" rx="3" />
+        {/* Red category pill */}
+        <rect x="16" y="114" width="32" height="7" fill="#C8102E" rx="3.5" />
+        {/* Feature headline */}
+        <rect x="14" y="124" width="148" height="6" fill="white" rx="1.5" opacity="0.95" />
+        <rect x="14" y="133" width="110" height="4" fill="white" rx="1" opacity="0.6" />
+        <rect x="14" y="140" width="80" height="3" fill="white" rx="1" opacity="0.35" />
+        {/* Right stacked articles */}
+        <rect x="176" y="62" width="96" height="40" fill="white" stroke="#E5E7EB" strokeWidth="0.5" rx="3" />
+        <rect x="176" y="62" width="96" height="22" fill="url(#mag-img2)" rx="3" />
+        <rect x="180" y="87" width="80" height="4" fill="#1A1A1A" rx="1" opacity="0.75" />
+        <rect x="180" y="94" width="60" height="3" fill="#6B7280" rx="1" opacity="0.6" />
+        <rect x="176" y="108" width="96" height="40" fill="white" stroke="#E5E7EB" strokeWidth="0.5" rx="3" />
+        <rect x="176" y="108" width="96" height="22" fill="url(#mag-img)" rx="3" />
+        <rect x="180" y="133" width="80" height="4" fill="#1A1A1A" rx="1" opacity="0.75" />
+        <rect x="180" y="140" width="60" height="3" fill="#6B7280" rx="1" opacity="0.6" />
+        <rect x="176" y="152" width="96" height="4" fill="url(#mag-img2)" rx="3" opacity="0.5" />
+        {/* Footer */}
+        <rect x="2" y="156" width="276" height="4" fill="#C8102E" />
+        <rect x="2" y="160" width="276" height="18" fill="#1A1A1A" rx="3" />
+        <rect x="90" y="166" width="100" height="3" fill="white" rx="1" opacity="0.2" />
+      </svg>
+    ),
+  },
+  {
+    id: 'dark-aurora',
+    name: 'Dark Aurora',
+    description: 'Dark mode elegante com acentos roxo/ciano e gradientes aurora',
+    preview: (
+      <svg viewBox="0 0 280 180" className="w-full" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="aurora-bg" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#0F1422" />
+            <stop offset="100%" stopColor="#0B0F1A" />
+          </linearGradient>
+          <linearGradient id="aurora-grad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#8B5CF6" />
+            <stop offset="100%" stopColor="#22D3EE" />
+          </linearGradient>
+          <linearGradient id="aurora-hero" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#1E1040" />
+            <stop offset="100%" stopColor="#0A2030" />
+          </linearGradient>
+          <linearGradient id="aurora-card" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1A1E2E" />
+            <stop offset="100%" stopColor="#141824" />
+          </linearGradient>
+        </defs>
+        {/* Browser chrome */}
+        <rect x="0" y="0" width="280" height="180" fill="#E4E7EC" rx="8" />
+        <rect x="2" y="2" width="276" height="176" fill="url(#aurora-bg)" rx="7" />
+        <rect x="2" y="2" width="276" height="16" fill="#ECEEF2" rx="7" />
+        <circle cx="11" cy="10" r="3" fill="#FC5F57" />
+        <circle cx="20" cy="10" r="3" fill="#FEBC2E" />
+        <circle cx="29" cy="10" r="3" fill="#28C840" />
+        <rect x="60" y="6" width="130" height="8" fill="white" rx="3" opacity="0.8" />
+        {/* Dark header */}
+        <rect x="2" y="18" width="276" height="20" fill="#0B0F1A" />
+        {/* Gradient border bottom of header */}
+        <rect x="2" y="37" width="276" height="1.5" fill="url(#aurora-grad)" opacity="0.7" />
+        {/* Blog name with gradient text suggestion */}
+        <rect x="12" y="23" width="56" height="8" fill="url(#aurora-grad)" rx="2" opacity="0.9" />
+        {/* Nav items */}
+        <rect x="84" y="26" width="14" height="3.5" fill="white" rx="1" opacity="0.4" />
+        <rect x="104" y="26" width="18" height="3.5" fill="white" rx="1" opacity="0.4" />
+        <rect x="128" y="26" width="16" height="3.5" fill="white" rx="1" opacity="0.4" />
+        <rect x="150" y="26" width="20" height="3.5" fill="white" rx="1" opacity="0.4" />
+        <rect x="238" y="23" width="32" height="8" fill="#1A1E2E" rx="3" stroke="#8B5CF6" strokeWidth="0.5" />
+        {/* Hero card with gradient overlay */}
+        <rect x="8" y="45" width="168" height="80" fill="url(#aurora-hero)" rx="4" />
+        {/* Aurora glow effect on hero */}
+        <ellipse cx="92" cy="65" rx="60" ry="25" fill="#8B5CF6" opacity="0.12" />
+        <ellipse cx="130" cy="80" rx="50" ry="20" fill="#22D3EE" opacity="0.08" />
+        {/* Gradient accent line on hero */}
+        <rect x="8" y="45" width="168" height="2" fill="url(#aurora-grad)" rx="2" opacity="0.8" />
+        {/* Hero category pill */}
+        <rect x="14" y="94" width="38" height="8" fill="#8B5CF6" rx="4" opacity="0.9" />
+        {/* Hero headline */}
+        <rect x="14" y="105" width="154" height="6" fill="white" rx="1.5" opacity="0.9" />
+        <rect x="14" y="114" width="110" height="4" fill="white" rx="1" opacity="0.5" />
+        <rect x="14" y="121" width="80" height="3" fill="white" rx="1" opacity="0.3" />
+        {/* Side cards */}
+        <rect x="182" y="45" width="90" height="37" fill="url(#aurora-card)" rx="4" stroke="#8B5CF6" strokeWidth="0.3" strokeOpacity="0.3" />
+        <rect x="182" y="45" width="90" height="2" fill="url(#aurora-grad)" rx="2" opacity="0.6" />
+        <rect x="188" y="52" width="50" height="4" fill="white" rx="1" opacity="0.7" />
+        <rect x="188" y="59" width="38" height="3" fill="white" rx="1" opacity="0.35" />
+        <rect x="188" y="65" width="44" height="3" fill="white" rx="1" opacity="0.25" />
+        <rect x="188" y="72" width="24" height="6" fill="#8B5CF6" rx="3" opacity="0.7" />
+        <rect x="182" y="88" width="90" height="37" fill="url(#aurora-card)" rx="4" stroke="#22D3EE" strokeWidth="0.3" strokeOpacity="0.3" />
+        <rect x="182" y="88" width="90" height="2" fill="url(#aurora-grad)" rx="2" opacity="0.6" />
+        <rect x="188" y="95" width="50" height="4" fill="white" rx="1" opacity="0.7" />
+        <rect x="188" y="102" width="38" height="3" fill="white" rx="1" opacity="0.35" />
+        <rect x="188" y="108" width="44" height="3" fill="white" rx="1" opacity="0.25" />
+        <rect x="188" y="115" width="24" height="6" fill="#22D3EE" rx="3" opacity="0.7" />
+        {/* Section heading */}
+        <rect x="8" y="132" width="60" height="4" fill="url(#aurora-grad)" rx="1" opacity="0.8" />
+        {/* 3-col cards */}
+        <rect x="8" y="142" width="82" height="28" fill="url(#aurora-card)" rx="4" stroke="#8B5CF6" strokeWidth="0.3" strokeOpacity="0.3" />
+        <rect x="12" y="148" width="54" height="3.5" fill="white" rx="1" opacity="0.5" />
+        <rect x="12" y="155" width="40" height="3" fill="white" rx="1" opacity="0.25" />
+        <rect x="99" y="142" width="82" height="28" fill="url(#aurora-card)" rx="4" stroke="#8B5CF6" strokeWidth="0.3" strokeOpacity="0.3" />
+        <rect x="103" y="148" width="54" height="3.5" fill="white" rx="1" opacity="0.5" />
+        <rect x="103" y="155" width="40" height="3" fill="white" rx="1" opacity="0.25" />
+        <rect x="190" y="142" width="82" height="28" fill="url(#aurora-card)" rx="4" stroke="#22D3EE" strokeWidth="0.3" strokeOpacity="0.3" />
+        <rect x="194" y="148" width="54" height="3.5" fill="white" rx="1" opacity="0.5" />
+        <rect x="194" y="155" width="40" height="3" fill="white" rx="1" opacity="0.25" />
+        {/* Footer */}
+        <rect x="2" y="174" width="276" height="1.5" fill="url(#aurora-grad)" rx="1" opacity="0.6" />
+        <rect x="2" y="170" width="276" height="4" fill="#0B0F1A" />
+      </svg>
+    ),
+  },
 ]
 
 const COLOR_LABELS: { key: keyof ThemeColors; label: string }[] = [
@@ -446,7 +650,108 @@ const DEFAULT_COLORS: Record<string, ThemeColors> = {
   business: { primary: '#0D1B4B', secondary: '#FF6B35', background: '#F7F8FA', surface: '#FFFFFF' },
   news: { primary: '#003580', secondary: '#E8002D', background: '#F2F2F2', surface: '#FFFFFF' },
   tech: { primary: '#111111', secondary: '#00B140', background: '#F4F4F4', surface: '#FFFFFF' },
+  minimal: { primary: '#111111', secondary: '#6B7280', background: '#FFFFFF', surface: '#FFFFFF' },
+  magazine: { primary: '#1A1A1A', secondary: '#C8102E', background: '#F8F5F0', surface: '#FFFFFF' },
+  'dark-aurora': { primary: '#8B5CF6', secondary: '#22D3EE', background: '#0B0F1A', surface: '#141824' },
 }
+
+type SectionId = 'template' | 'logo' | 'import' | 'colors' | 'typography' | 'font-sizes' | 'radius' | 'semantic-colors'
+
+const SIDEBAR_ITEMS: { id: SectionId; label: string; icon: ReactNode }[] = [
+  {
+    id: 'template',
+    label: 'Template',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="18" height="18" rx="2" />
+        <path d="M3 9h18" />
+        <path d="M9 21V9" />
+      </svg>
+    ),
+  },
+  {
+    id: 'logo',
+    label: 'Logotipo',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="12" cy="12" r="10" />
+        <path d="M8 12h8" />
+        <path d="M12 8v8" />
+      </svg>
+    ),
+  },
+  {
+    id: 'import',
+    label: 'Importar design',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
+      </svg>
+    ),
+  },
+  {
+    id: 'colors',
+    label: 'Cores',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="13.5" cy="6.5" r="2.5" />
+        <circle cx="17.5" cy="10.5" r="2.5" />
+        <circle cx="8.5" cy="7.5" r="2.5" />
+        <circle cx="6.5" cy="12.5" r="2.5" />
+        <path d="M12 22a7 7 0 0 0 7-7c0-2.5-2-3.5-4-4.5-2-1-4-2-4-4.5" />
+        <path d="M12 22c-2.5 0-7-1.5-7-7 0-2.5 2-3.5 4-4.5" />
+      </svg>
+    ),
+  },
+  {
+    id: 'typography',
+    label: 'Tipografia',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="4 7 4 4 20 4 20 7" />
+        <line x1="9" y1="20" x2="15" y2="20" />
+        <line x1="12" y1="4" x2="12" y2="20" />
+      </svg>
+    ),
+  },
+  {
+    id: 'font-sizes',
+    label: 'Tamanhos de fonte',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 20h4" />
+        <path d="M6 4v16" />
+        <path d="M14 12h6" />
+        <path d="M17 4v16" />
+        <path d="M4 4h8" />
+        <path d="M14 12v8" />
+      </svg>
+    ),
+  },
+  {
+    id: 'radius',
+    label: 'Arredondamento',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 13V9a6 6 0 0 1 6-6h4" />
+        <path d="M21 11v4a6 6 0 0 1-6 6H9" />
+        <path d="M3 13v2a6 6 0 0 0 6 6h2" />
+        <path d="M21 11V9a6 6 0 0 0-6-6h-2" />
+      </svg>
+    ),
+  },
+  {
+    id: 'semantic-colors',
+    label: 'Cores semânticas',
+    icon: (
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+      </svg>
+    ),
+  },
+]
 
 export function ApparenceClient({ initial }: Props) {
   const [template, setTemplate] = useState(initial.template)
@@ -455,6 +760,7 @@ export function ApparenceClient({ initial }: Props) {
   const [saving, setSaving] = useState(false)
   const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
   const [designSystem, setDesignSystem] = useState<DesignSystem>(initial.design_system)
+  const [activeSection, setActiveSection] = useState<SectionId>('template')
 
   function handleDSChange(key: keyof DesignSystem, value: string) {
     setDesignSystem((prev) => ({ ...prev, [key]: value }))
@@ -501,10 +807,255 @@ export function ApparenceClient({ initial }: Props) {
     }
   }
 
+  function renderContent() {
+    switch (activeSection) {
+      case 'template':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Template</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {TEMPLATE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => handleTemplateChange(opt.id)}
+                  className={`relative text-left rounded-xl border-2 p-4 transition-all ${
+                    template === opt.id
+                      ? 'border-brand-primary bg-brand-primary-light'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  {template === opt.id && (
+                    <span className="absolute top-3 right-3 bg-brand-primary text-white text-xs px-2 py-0.5 rounded-full">
+                      Ativo
+                    </span>
+                  )}
+                  <div className="mb-3 rounded overflow-hidden border border-gray-100 max-h-32">
+                    {opt.preview}
+                  </div>
+                  <p className="font-semibold text-neutral-900">{opt.name}</p>
+                  <p className="text-sm text-gray-500 mt-0.5">{opt.description}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+        )
+
+      case 'logo':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-1">Logotipo</h2>
+            <p className="text-sm text-gray-500 mb-4">Aparece no canto esquerdo do header. Sem logo, o nome do blog é exibido no lugar.</p>
+            <div className="max-w-sm">
+              <ImageUpload value={logoUrl} onChange={setLogoUrl} variant="logo" />
+            </div>
+          </section>
+        )
+
+      case 'import':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-2">Importar design do site</h2>
+            <DesignSystemImporter
+              onApply={handleImportApply}
+              onColorsApply={(themeColors) => setColors((prev) => ({ ...prev, ...themeColors }))}
+              onLogoApply={setLogoUrl}
+            />
+          </section>
+        )
+
+      case 'colors':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Cores</h2>
+            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              {COLOR_LABELS.map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between px-5 py-4 gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-900">{label}</p>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">{colors[key]}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={colors[key]}
+                      onChange={(e) => handleColorChange(key, e.target.value)}
+                      className="w-10 h-10 rounded cursor-pointer border border-gray-200"
+                    />
+                    <input
+                      type="text"
+                      value={colors[key]}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) handleColorChange(key, v)
+                      }}
+                      className="w-24 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    />
+                    <button
+                      onClick={() => handleReset(key)}
+                      className="text-xs text-gray-400 hover:text-brand-primary transition-colors"
+                      title="Restaurar padrão"
+                    >
+                      Padrão
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+
+      case 'typography':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Tipografia</h2>
+            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              {([
+                { key: 'font_sans' as const, label: 'Fonte principal (sans-serif)', placeholder: 'Inter, system-ui, sans-serif' },
+                { key: 'font_serif' as const, label: 'Fonte de títulos (serif)', placeholder: '"Source Serif 4", Georgia, serif' },
+                { key: 'font_mono' as const, label: 'Fonte de código (mono)', placeholder: '"JetBrains Mono", monospace' },
+              ]).map(({ key, label, placeholder }) => (
+                <div key={key} className="flex items-center justify-between px-5 py-4 gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-900">{label}</p>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">{designSystem[key]}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={designSystem[key]}
+                      onChange={(e) => handleDSChange(key, e.target.value)}
+                      placeholder={placeholder}
+                      className="w-64 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    />
+                    <button onClick={() => handleDSReset(key)} className="text-xs text-gray-400 hover:text-brand-primary transition-colors">
+                      Padrão
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+
+      case 'font-sizes':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Tamanhos de fonte</h2>
+            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              {([
+                { key: 'font_size_sm' as const, label: 'Pequeno (sm)' },
+                { key: 'font_size_base' as const, label: 'Base' },
+                { key: 'font_size_lg' as const, label: 'Grande (lg)' },
+                { key: 'font_size_xl' as const, label: 'Extra grande (xl)' },
+                { key: 'font_size_2xl' as const, label: '2XL' },
+                { key: 'font_size_3xl' as const, label: '3XL (títulos)' },
+              ]).map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between px-5 py-3 gap-4">
+                  <p className="text-sm font-medium text-neutral-900 w-48">{label}</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={designSystem[key]}
+                      onChange={(e) => handleDSChange(key, e.target.value)}
+                      className="w-28 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    />
+                    <button onClick={() => handleDSReset(key)} className="text-xs text-gray-400 hover:text-brand-primary transition-colors">
+                      Padrão
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+
+      case 'radius':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Arredondamento (border-radius)</h2>
+            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              {([
+                { key: 'radius_sm' as const, label: 'Pequeno (sm)' },
+                { key: 'radius_md' as const, label: 'Médio (md)' },
+                { key: 'radius_lg' as const, label: 'Grande (lg)' },
+                { key: 'radius_full' as const, label: 'Circular (full)' },
+              ]).map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between px-5 py-3 gap-4">
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-10 h-10 border-2 border-brand-primary shrink-0"
+                      style={{ borderRadius: designSystem[key] }}
+                    />
+                    <p className="text-sm font-medium text-neutral-900">{label}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={designSystem[key]}
+                      onChange={(e) => handleDSChange(key, e.target.value)}
+                      className="w-28 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    />
+                    <button onClick={() => handleDSReset(key)} className="text-xs text-gray-400 hover:text-brand-primary transition-colors">
+                      Padrão
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+
+      case 'semantic-colors':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-neutral-900 mb-4">Cores semânticas</h2>
+            <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
+              {([
+                { key: 'color_text_primary' as const, label: 'Texto principal' },
+                { key: 'color_text_secondary' as const, label: 'Texto secundário' },
+                { key: 'color_border' as const, label: 'Borda padrão' },
+                { key: 'color_error' as const, label: 'Erro' },
+                { key: 'color_success' as const, label: 'Sucesso' },
+                { key: 'color_warning' as const, label: 'Alerta' },
+              ]).map(({ key, label }) => (
+                <div key={key} className="flex items-center justify-between px-5 py-4 gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-neutral-900">{label}</p>
+                    <p className="text-xs text-gray-400 font-mono mt-0.5">{designSystem[key]}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={designSystem[key]}
+                      onChange={(e) => handleDSChange(key, e.target.value)}
+                      className="w-10 h-10 rounded cursor-pointer border border-gray-200"
+                    />
+                    <input
+                      type="text"
+                      value={designSystem[key]}
+                      onChange={(e) => {
+                        const v = e.target.value
+                        if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) handleDSChange(key, v)
+                      }}
+                      className="w-24 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                    />
+                    <button onClick={() => handleDSReset(key)} className="text-xs text-gray-400 hover:text-brand-primary transition-colors">
+                      Padrão
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )
+    }
+  }
+
+  usePageTitle('Aparência')
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-neutral-900">Aparência</h1>
+      <div className="flex items-center justify-end mb-8">
         <button
           onClick={handleSave}
           disabled={saving}
@@ -526,229 +1077,29 @@ export function ApparenceClient({ initial }: Props) {
         </div>
       )}
 
-      {/* Template selector */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Template</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {TEMPLATE_OPTIONS.map((opt) => (
-            <button
-              key={opt.id}
-              onClick={() => handleTemplateChange(opt.id)}
-              className={`relative text-left rounded-xl border-2 p-4 transition-all ${
-                template === opt.id
-                  ? 'border-brand-primary bg-brand-primary-light'
-                  : 'border-gray-200 bg-white hover:border-gray-300'
-              }`}
-            >
-              {template === opt.id && (
-                <span className="absolute top-3 right-3 bg-brand-primary text-white text-xs px-2 py-0.5 rounded-full">
-                  Ativo
-                </span>
-              )}
-              <div className="mb-3 rounded overflow-hidden border border-gray-100 max-h-32">
-                {opt.preview}
-              </div>
-              <p className="font-semibold text-neutral-900">{opt.name}</p>
-              <p className="text-sm text-gray-500 mt-0.5">{opt.description}</p>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* Logo */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-1">Logotipo</h2>
-        <p className="text-sm text-gray-500 mb-4">Aparece no canto esquerdo do header. Sem logo, o nome do blog é exibido no lugar.</p>
-        <div className="max-w-sm">
-          <ImageUpload value={logoUrl} onChange={setLogoUrl} variant="logo" />
-        </div>
-      </section>
-
-      {/* Design System Importer */}
-      <section className="mb-8">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-2">Importar design do site</h2>
-        <DesignSystemImporter
-          onApply={handleImportApply}
-          onColorsApply={(themeColors) => setColors((prev) => ({ ...prev, ...themeColors }))}
-          onLogoApply={setLogoUrl}
-        />
-      </section>
-
-      {/* Color customizer */}
-      <section>
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Cores</h2>
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          {COLOR_LABELS.map(({ key, label }) => (
-            <div key={key} className="flex items-center justify-between px-5 py-4 gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900">{label}</p>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{colors[key]}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={colors[key]}
-                  onChange={(e) => handleColorChange(key, e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer border border-gray-200"
-                />
-                <input
-                  type="text"
-                  value={colors[key]}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) handleColorChange(key, v)
-                  }}
-                  className="w-24 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                />
+      <div className="flex gap-6">
+        <nav className="w-56 shrink-0">
+          <ul className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {SIDEBAR_ITEMS.map((item) => (
+              <li key={item.id}>
                 <button
-                  onClick={() => handleReset(key)}
-                  className="text-xs text-gray-400 hover:text-brand-primary transition-colors"
-                  title="Restaurar padrão"
+                  onClick={() => setActiveSection(item.id)}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-left transition-colors ${
+                    activeSection === item.id
+                      ? 'bg-brand-primary text-white'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
                 >
-                  Padrão
+                  <span>{item.icon}</span>
+                  {item.label}
                 </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+              </li>
+            ))}
+          </ul>
+        </nav>
 
-      {/* Typography */}
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Tipografia</h2>
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          {([
-            { key: 'font_sans' as const, label: 'Fonte principal (sans-serif)', placeholder: 'Inter, system-ui, sans-serif' },
-            { key: 'font_serif' as const, label: 'Fonte de títulos (serif)', placeholder: '"Source Serif 4", Georgia, serif' },
-            { key: 'font_mono' as const, label: 'Fonte de código (mono)', placeholder: '"JetBrains Mono", monospace' },
-          ]).map(({ key, label, placeholder }) => (
-            <div key={key} className="flex items-center justify-between px-5 py-4 gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900">{label}</p>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{designSystem[key]}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={designSystem[key]}
-                  onChange={(e) => handleDSChange(key, e.target.value)}
-                  placeholder={placeholder}
-                  className="w-64 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                />
-                <button onClick={() => handleDSReset(key)} className="text-xs text-gray-400 hover:text-brand-primary transition-colors">
-                  Padrão
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Font sizes */}
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Tamanhos de fonte</h2>
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          {([
-            { key: 'font_size_sm' as const, label: 'Pequeno (sm)' },
-            { key: 'font_size_base' as const, label: 'Base' },
-            { key: 'font_size_lg' as const, label: 'Grande (lg)' },
-            { key: 'font_size_xl' as const, label: 'Extra grande (xl)' },
-            { key: 'font_size_2xl' as const, label: '2XL' },
-            { key: 'font_size_3xl' as const, label: '3XL (títulos)' },
-          ]).map(({ key, label }) => (
-            <div key={key} className="flex items-center justify-between px-5 py-3 gap-4">
-              <p className="text-sm font-medium text-neutral-900 w-48">{label}</p>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={designSystem[key]}
-                  onChange={(e) => handleDSChange(key, e.target.value)}
-                  className="w-28 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                />
-                <button onClick={() => handleDSReset(key)} className="text-xs text-gray-400 hover:text-brand-primary transition-colors">
-                  Padrão
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Border radius */}
-      <section className="mt-8">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Arredondamento (border-radius)</h2>
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          {([
-            { key: 'radius_sm' as const, label: 'Pequeno (sm)' },
-            { key: 'radius_md' as const, label: 'Médio (md)' },
-            { key: 'radius_lg' as const, label: 'Grande (lg)' },
-            { key: 'radius_full' as const, label: 'Circular (full)' },
-          ]).map(({ key, label }) => (
-            <div key={key} className="flex items-center justify-between px-5 py-3 gap-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className="w-10 h-10 border-2 border-brand-primary shrink-0"
-                  style={{ borderRadius: designSystem[key] }}
-                />
-                <p className="text-sm font-medium text-neutral-900">{label}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={designSystem[key]}
-                  onChange={(e) => handleDSChange(key, e.target.value)}
-                  className="w-28 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                />
-                <button onClick={() => handleDSReset(key)} className="text-xs text-gray-400 hover:text-brand-primary transition-colors">
-                  Padrão
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Extended colors */}
-      <section className="mt-8 mb-8">
-        <h2 className="text-lg font-semibold text-neutral-900 mb-4">Cores semânticas</h2>
-        <div className="bg-white rounded-xl border border-gray-200 divide-y divide-gray-100">
-          {([
-            { key: 'color_text_primary' as const, label: 'Texto principal' },
-            { key: 'color_text_secondary' as const, label: 'Texto secundário' },
-            { key: 'color_border' as const, label: 'Borda padrão' },
-            { key: 'color_error' as const, label: 'Erro' },
-            { key: 'color_success' as const, label: 'Sucesso' },
-            { key: 'color_warning' as const, label: 'Alerta' },
-          ]).map(({ key, label }) => (
-            <div key={key} className="flex items-center justify-between px-5 py-4 gap-4">
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-neutral-900">{label}</p>
-                <p className="text-xs text-gray-400 font-mono mt-0.5">{designSystem[key]}</p>
-              </div>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={designSystem[key]}
-                  onChange={(e) => handleDSChange(key, e.target.value)}
-                  className="w-10 h-10 rounded cursor-pointer border border-gray-200"
-                />
-                <input
-                  type="text"
-                  value={designSystem[key]}
-                  onChange={(e) => {
-                    const v = e.target.value
-                    if (/^#[0-9A-Fa-f]{0,6}$/.test(v)) handleDSChange(key, v)
-                  }}
-                  className="w-24 text-sm font-mono border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-primary"
-                />
-                <button onClick={() => handleDSReset(key)} className="text-xs text-gray-400 hover:text-brand-primary transition-colors">
-                  Padrão
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
+        <div className="flex-1 min-w-0">{renderContent()}</div>
+      </div>
     </div>
   )
 }

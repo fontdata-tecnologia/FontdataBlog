@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePageTitle } from '@/components/admin/AdminPageTitleContext'
 import { Button } from '@/components/ui/Button'
 import type { Category } from '@/lib/admin-types'
 
 export default function CategoriasPage() {
+  usePageTitle('Categorias')
   const [categories, setCategories] = useState<Category[]>([])
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -49,8 +51,6 @@ export default function CategoriasPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-neutral-900 mb-6">Categorias</h1>
-
       <div className="bg-white rounded-xl border border-gray-200 p-5 mb-6">
         <h2 className="font-medium text-neutral-900 mb-4">{editing ? 'Editar Categoria' : 'Nova Categoria'}</h2>
         <div className="flex gap-3 items-end">

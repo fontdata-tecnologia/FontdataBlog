@@ -25,6 +25,7 @@ const DEFAULT_MODELS: Record<string, string> = {
   theme_suggestion: FREE_MODEL,
   category_matching: FREE_MODEL,
   url_extraction: FREE_MODEL,
+  briefing_extraction: FREE_MODEL,
 }
 
 export function getDefaultModels(): Record<string, string> {

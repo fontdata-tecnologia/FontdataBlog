@@ -109,6 +109,31 @@ Estas regras são invioláveis. Se um agente especializado as violar, você reje
 4. **API pública filtra `status = 'published'`** — nunca expõe rascunhos
 5. **Deploy via `git push` para GitHub** — nunca `vercel deploy` diretamente
 6. **Chave de API da IA na tabela `site_settings`** — nunca em variáveis de ambiente
+7. **Paridade de schema obrigatória** — toda mudança em `drizzle/schema.ts` precisa ser propagada para `lib/migrations-embedded.ts`, `lib/db-migrations.ts` (`EXPECTED_TABLES`) e `drizzle/setup-sql.ts`. Em produção o banco NÃO roda `db:migrate` — ele é atualizado pelo `DbUpdateModal`. Ver "Sinalização de versão de banco" abaixo.
+
+---
+
+## Sinalização de versão de banco (código ⟺ banco)
+
+Em produção (Vercel) o deploy **não roda migrations**. Quando o usuário admin entra no
+sistema, o `DbUpdateModal` (em `app/admin/layout.tsx`) compara o schema esperado pelo
+código com o que existe no banco e, se houver drift, pede a atualização. É assim que se
+mantém compatibilidade total entre a versão do código deployada e a versão do banco.
+
+**Sempre que uma tarefa exigir mudança de banco** (nova tabela, coluna ou índice), você
+DEVE garantir que o `db-engineer` execute o **Protocolo de paridade do schema** dele —
+não basta `db:generate`/`db:migrate`. Concretamente, ao despachar o `db-engineer` para
+qualquer mudança de schema, inclua explicitamente na instrução:
+
+> "Após alterar o schema, propague a paridade: copie a migration para
+> `lib/migrations-embedded.ts` (EMBEDDED_MIGRATIONS + MIGRATION_ORDER), adicione tabela
+> nova em EXPECTED_TABLES (`lib/db-migrations.ts`) e sincronize `drizzle/setup-sql.ts`
+> com IF NOT EXISTS. Garanta idempotência."
+
+Na revisão final (`reviewer`), confirme que essa paridade foi feita antes de aprovar.
+Ao reportar ao usuário, sinalize: "esta mudança altera o banco — após o deploy, ao
+entrar no admin o sistema pedirá a atualização do banco (modal); basta clicar
+'Atualizar agora'." Ref: `docs/bugs/banco-desatualizado-modal-nao-detecta-drift.md`.
 
 ---
 

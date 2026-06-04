@@ -1,14 +1,27 @@
 'use client'
 
 import { useAdminTheme } from './AdminThemeProvider'
+import { usePageTitleValue } from './AdminPageTitleContext'
 
 export function AdminTopBar() {
   const { theme, toggle } = useAdminTheme()
   const isDark = theme === 'dark'
+  const { title, subtitle } = usePageTitleValue()
 
   return (
     <div className="admin-topbar">
-      <div className="flex-1" />
+      <div className="flex-1 min-w-0">
+        {title ? (
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold admin-text-primary leading-tight truncate">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="text-sm admin-text-secondary mt-1 truncate">{subtitle}</p>
+            )}
+          </div>
+        ) : null}
+      </div>
       <a
         href={process.env.NEXT_PUBLIC_APP_URL ?? '/'}
         target="_blank"
