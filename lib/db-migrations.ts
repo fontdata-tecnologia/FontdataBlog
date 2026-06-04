@@ -35,9 +35,11 @@ async function getAppliedMigrations(): Promise<string[]> {
       sql`SELECT migration_name FROM drizzle_migrations ORDER BY created_at ASC`
     )
     return (rows as unknown as { migration_name: string }[]).map((r) => r.migration_name)
-  } catch {
-    // tabela não existe — banco em branco
-    return []
+  } catch (err) {
+    // 42P01 = undefined_table (banco em branco)
+    const pgCode = (err as { code?: string })?.code
+    if (pgCode === '42P01') return []
+    throw err
   }
 }
 
@@ -60,7 +62,12 @@ export async function ensureMigrationsTable(): Promise<void> {
 
 export async function applyMigration(tag: string): Promise<void> {
   const sqlPath = path.join(process.cwd(), 'drizzle', 'migrations', `${tag}.sql`)
-  const raw = fs.readFileSync(sqlPath, 'utf-8')
+  let raw: string
+  try {
+    raw = fs.readFileSync(sqlPath, 'utf-8')
+  } catch {
+    throw new Error(`Arquivo de migration não encontrado: ${tag}.sql`)
+  }
 
   // Drizzle separa statements com --> statement-breakpoint
   const statements = raw
@@ -68,12 +75,13 @@ export async function applyMigration(tag: string): Promise<void> {
     .map((s) => s.trim())
     .filter(Boolean)
 
-  for (const statement of statements) {
-    await db.execute(sql.raw(statement))
-  }
-
-  await db.execute(
-    sql`INSERT INTO drizzle_migrations (migration_name) VALUES (${tag})
-        ON CONFLICT (migration_name) DO NOTHING`
-  )
+  await db.transaction(async (tx) => {
+    for (const statement of statements) {
+      await tx.execute(sql.raw(statement))
+    }
+    await tx.execute(
+      sql`INSERT INTO drizzle_migrations (migration_name) VALUES (${tag})
+          ON CONFLICT (migration_name) DO NOTHING`
+    )
+  })
 }

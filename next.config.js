@@ -9,6 +9,10 @@ const nextConfig = {
     ],
   },
   serverExternalPackages: ['css-tree'],
+  outputFileTracingIncludes: {
+    '/api/admin/db-migrate': ['./drizzle/migrations/**/*'],
+    '/admin': ['./drizzle/migrations/**/*'],
+  },
 }
 
 module.exports = nextConfig
