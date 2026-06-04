@@ -13,7 +13,8 @@ import {
   IconConfiguracaoArtigos,
 } from '@/components/admin/icons/ExpxIcons'
 
-import { useState, useEffect, KeyboardEvent, type ReactNode } from 'react'
+import { useState, useEffect, Suspense, KeyboardEvent, type ReactNode } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
@@ -56,7 +57,11 @@ export default function ArtigosClient() {
   function renderContent() {
     switch (activeSection) {
       case 'lista':
-        return <ListaArtigos />
+        return (
+          <Suspense fallback={null}>
+            <ListaArtigos />
+          </Suspense>
+        )
       case 'temas':
         return <TemasSection />
       case 'briefing':
@@ -178,6 +183,12 @@ function ListaArtigos() {
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showNewModal, setShowNewModal] = useState(false)
+  const searchParams = useSearchParams()
+
+  // Abre o modal de geração com IA quando chega via atalho do dashboard (?new=1)
+  useEffect(() => {
+    if (searchParams.get('new') === '1') setShowNewModal(true)
+  }, [searchParams])
 
   async function fetchPosts() {
     setLoading(true)
