@@ -1,7 +1,18 @@
 // lib/db-migrations.ts
+import postgres from 'postgres'
 import { db } from '@/drizzle/db'
 import { sql } from 'drizzle-orm'
 import { EMBEDDED_MIGRATIONS, MIGRATION_ORDER } from './migrations-embedded'
+
+// Usa o cliente postgres direto para DDL — o Drizzle com pooler pode rejeitar CREATE TABLE
+function getRawClient(): ReturnType<typeof postgres> {
+  return postgres(process.env.DATABASE_URL!, {
+    ssl: { rejectUnauthorized: false },
+    max: 1,
+    prepare: false,
+    connect_timeout: 15,
+  })
+}
 
 async function getAppliedMigrations(): Promise<string[]> {
   try {
@@ -38,13 +49,18 @@ export async function getDbPendingMigrations(): Promise<string[]> {
 }
 
 export async function ensureMigrationsTable(): Promise<void> {
-  await db.execute(sql.raw(`
-    CREATE TABLE IF NOT EXISTS drizzle_migrations (
-      id serial PRIMARY KEY,
-      migration_name text NOT NULL UNIQUE,
-      created_at timestamp DEFAULT now() NOT NULL
-    )
-  `))
+  const client = getRawClient()
+  try {
+    await client.unsafe(`
+      CREATE TABLE IF NOT EXISTS drizzle_migrations (
+        id serial PRIMARY KEY,
+        migration_name text NOT NULL UNIQUE,
+        created_at timestamp DEFAULT now() NOT NULL
+      )
+    `)
+  } finally {
+    await client.end()
+  }
 }
 
 export async function applyMigration(tag: string): Promise<void> {
@@ -58,13 +74,20 @@ export async function applyMigration(tag: string): Promise<void> {
     .map((s) => s.trim())
     .filter(Boolean)
 
-  await db.transaction(async (tx) => {
-    for (const statement of statements) {
-      await tx.execute(sql.raw(statement))
-    }
-    await tx.execute(
-      sql`INSERT INTO drizzle_migrations (migration_name) VALUES (${tag})
-          ON CONFLICT (migration_name) DO NOTHING`
-    )
-  })
+  const client = getRawClient()
+  try {
+    // Executa todos os statements + registro em uma única transação
+    await client.begin(async (tx) => {
+      for (const statement of statements) {
+        await tx.unsafe(statement)
+      }
+      await tx`
+        INSERT INTO drizzle_migrations (migration_name)
+        VALUES (${tag})
+        ON CONFLICT (migration_name) DO NOTHING
+      `
+    })
+  } finally {
+    await client.end()
+  }
 }

@@ -53,6 +53,7 @@ export async function POST() {
         send({ type: 'complete', message: 'Todas as migrations aplicadas com sucesso.' })
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
+        console.error('[db-migrate]', err)
         send({ type: 'error', name: '', message })
       } finally {
         close()
