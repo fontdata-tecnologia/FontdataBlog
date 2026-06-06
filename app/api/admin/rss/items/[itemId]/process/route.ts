@@ -5,7 +5,7 @@ import { eq } from 'drizzle-orm'
 import { createPipelineStream } from '@/lib/agent-pipeline'
 import type { PipelineEvent } from '@/lib/agents/types'
 
-export const maxDuration = 800
+export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 export async function POST(_req: NextRequest, { params }: { params: { itemId: string } }) {

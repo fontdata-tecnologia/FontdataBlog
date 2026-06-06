@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runAutomationCycle } from '@/lib/automation'
 
-export const maxDuration = 800
+export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
   const authHeader = request.headers.get('authorization')

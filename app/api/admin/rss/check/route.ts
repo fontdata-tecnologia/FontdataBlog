@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { checkAllFeeds } from '@/lib/rss-automation'
 
-export const maxDuration = 800
+export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
 // Called by Vercel Cron and by the "Verificar agora" button in the UI
