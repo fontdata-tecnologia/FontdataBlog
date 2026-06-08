@@ -150,6 +150,8 @@ const EXPECTED_COLUMNS = [
   { table: 'newsletter_subscribers', column: 'consent_at' },
   { table: 'newsletter_subscribers', column: 'consent_text_version' },
   { table: 'posts', column: 'author_name' },
+  { table: 'automation_config', column: 'block_start_time' },
+  { table: 'automation_config', column: 'block_end_time' },
 ] as const
 
 /** Retorna true se alguma coluna crítica estiver faltando no banco. */

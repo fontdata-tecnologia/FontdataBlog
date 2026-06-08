@@ -323,6 +323,9 @@ EXCEPTION
 END $$;`,
 
   '0007_chemical_blue_marvel': `ALTER TABLE "posts" ADD COLUMN IF NOT EXISTS "author_name" text;`,
+
+  '0008_block_hours_automation': `ALTER TABLE "automation_config" ADD COLUMN IF NOT EXISTS "block_start_time" time;--> statement-breakpoint
+ALTER TABLE "automation_config" ADD COLUMN IF NOT EXISTS "block_end_time" time;`,
 }
 
 // Ordem de aplicação (mesma do _journal.json)
@@ -335,4 +338,5 @@ export const MIGRATION_ORDER = [
   '0005_stormy_silver_centurion',
   '0006_provision_storage_bucket',
   '0007_chemical_blue_marvel',
+  '0008_block_hours_automation',
 ]

@@ -5,6 +5,7 @@ import {
   integer,
   real,
   timestamp,
+  time,
   boolean,
   primaryKey,
   index,
@@ -173,6 +174,8 @@ export const automationConfig = pgTable('automation_config', {
   custom_prompt: text('custom_prompt'),
   last_run_at: timestamp('last_run_at'),
   next_run_at: timestamp('next_run_at'),
+  block_start_time: time('block_start_time'),
+  block_end_time: time('block_end_time'),
   created_at: timestamp('created_at').notNull().default(sql`now()`),
   updated_at: timestamp('updated_at').notNull().default(sql`now()`),
 })

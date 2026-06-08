@@ -122,9 +122,14 @@ CREATE TABLE IF NOT EXISTS "automation_config" (
   "custom_prompt" text,
   "last_run_at" timestamp,
   "next_run_at" timestamp,
+  "block_start_time" time,
+  "block_end_time" time,
   "created_at" timestamp NOT NULL DEFAULT now(),
   "updated_at" timestamp NOT NULL DEFAULT now()
 );
+-- Migração idempotente: garante colunas de bloqueio de horário em bancos existentes
+ALTER TABLE IF EXISTS "automation_config" ADD COLUMN IF NOT EXISTS "block_start_time" time;
+ALTER TABLE IF EXISTS "automation_config" ADD COLUMN IF NOT EXISTS "block_end_time" time;
 
 CREATE TABLE IF NOT EXISTS "agent_configs" (
   "id" text PRIMARY KEY NOT NULL,

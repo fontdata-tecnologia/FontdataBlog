@@ -804,6 +804,9 @@ function AutomacaoSection() {
   const [imageWarning, setImageWarning] = useState<string | null>(null)
   const [logs, setLogs] = useState<AutomationLogEntry[]>([])
   const [expandedLogId, setExpandedLogId] = useState<number | null>(null)
+  const [blockEnabled, setBlockEnabled] = useState(false)
+  const [blockStart, setBlockStart] = useState('')
+  const [blockEnd, setBlockEnd] = useState('')
 
   async function reloadLogs() {
     const data = await fetch('/api/admin/automation/logs?limit=20')
@@ -829,6 +832,8 @@ function AutomacaoSection() {
         custom_prompt?: string
         last_run_at?: string
         next_run_at?: string
+        block_start_time?: string | null
+        block_end_time?: string | null
       }) => {
         if (data.enabled !== undefined) setEnabled(data.enabled)
         if (data.interval_hours) setIntervalHours(data.interval_hours)
@@ -839,6 +844,13 @@ function AutomacaoSection() {
         if (data.custom_prompt) setCustomPrompt(data.custom_prompt)
         if (data.last_run_at) setLastRunAt(data.last_run_at)
         if (data.next_run_at) setNextRunAt(data.next_run_at)
+        if (data.block_start_time) {
+          setBlockEnabled(true)
+          setBlockStart(data.block_start_time.slice(0, 5))
+        }
+        if (data.block_end_time) {
+          setBlockEnd(data.block_end_time.slice(0, 5))
+        }
       })
       .catch(() => {})
 
@@ -862,6 +874,8 @@ function AutomacaoSection() {
           interval_hours: intervalHours,
           theme_ids: themeMode === 'specific' ? selectedThemeIds : [],
           custom_prompt: customPrompt,
+          block_start_time: blockEnabled && blockStart ? blockStart : null,
+          block_end_time: blockEnabled && blockEnd ? blockEnd : null,
         }),
       })
       if (!res.ok) throw new Error('Erro ao salvar')
@@ -1059,6 +1073,52 @@ function AutomacaoSection() {
               placeholder="Ex: Sempre inclua ao menos um exemplo prático e uma lista de dicas ao final do artigo."
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary resize-y"
             />
+          </div>
+
+          {/* Horário de Bloqueio */}
+          <div className="border border-gray-200 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-medium text-gray-900">Horário de Bloqueio</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Quando ativo, a automação não gera posts dentro da faixa de horário configurada. Suporta cruzamento de meia-noite (ex: 22:00–06:00).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBlockEnabled(!blockEnabled)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ml-4 ${
+                  blockEnabled ? 'bg-brand-primary' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${
+                  blockEnabled ? 'translate-x-6' : 'translate-x-1'
+                }`} />
+              </button>
+            </div>
+            {blockEnabled && (
+              <div className="flex items-center gap-3 mt-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Início</label>
+                  <input
+                    type="time"
+                    value={blockStart}
+                    onChange={(e) => setBlockStart(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  />
+                </div>
+                <span className="text-gray-400 mt-5">até</span>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Fim</label>
+                  <input
+                    type="time"
+                    value={blockEnd}
+                    onChange={(e) => setBlockEnd(e.target.value)}
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 flex flex-col sm:flex-row gap-4">
