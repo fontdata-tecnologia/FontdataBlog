@@ -11,6 +11,9 @@ export function AnalyticsTracker() {
       try {
         await fetch('/api/track', {
           method: 'POST',
+          // keepalive: o request sobrevive ao fechamento da aba / navegação
+          // completa — sem isso, bounces rápidos eram sistematicamente perdidos
+          keepalive: true,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             path: pathname,

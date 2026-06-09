@@ -18,14 +18,25 @@ import { createHash } from 'crypto'
 function truncateIp(ip: string): string {
   if (!ip || ip === 'unknown') return ip
 
+  // IPv4-mapped IPv6 (::ffff:a.b.c.d) — formato comum em proxies/Node — trata como IPv4
+  const mapped = ip.match(/^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/i)
+  if (mapped) return `${mapped[1]}.0`
+
   // IPv4: a.b.c.d → a.b.c.0
   const ipv4 = ip.match(/^(\d{1,3}\.\d{1,3}\.\d{1,3})\.\d{1,3}$/)
   if (ipv4) return `${ipv4[1]}.0`
 
-  // IPv6: mantém os primeiros 4 grupos, zera o restante (ex: 2001:db8:cafe:1::)
-  const ipv6groups = ip.split(':')
-  if (ipv6groups.length >= 4) {
-    return `${ipv6groups.slice(0, 4).join(':')}::`
+  // IPv6: expande a notação comprimida ('::') antes de cortar — sem isso, grupos
+  // da porção de HOST entrariam no hash em endereços como 2001:db8::abcd:1234
+  if (ip.includes(':')) {
+    const [head, tail = ''] = ip.split('::')
+    const headGroups = head ? head.split(':') : []
+    const tailGroups = tail ? tail.split(':') : []
+    const groups = ip.includes('::')
+      ? [...headGroups, ...Array(Math.max(0, 8 - headGroups.length - tailGroups.length)).fill('0'), ...tailGroups]
+      : headGroups
+    // Mantém só os 4 primeiros grupos (prefixo de rede /64), zera o restante
+    if (groups.length === 8) return `${groups.slice(0, 4).join(':')}::`
   }
 
   // Não identificado como IPv4 nem IPv6 — retorna como está
@@ -48,15 +59,20 @@ function truncateIp(ip: string): string {
  * diferente a cada dia. Na virada do dia o salt muda e uma nova visita gera
  * hash diferente — comportamento esperado.
  *
+ * O path NÃO entra no hash: o fingerprint identifica o visitante do dia, para
+ * que count(distinct ip) no dashboard meça visitantes — não visitante×página.
+ * A deduplicação por página já filtra a coluna path explicitamente na query.
+ *
  * Art. 5º, 7º e 46 §2 LGPD — dado pessoal anonimizado não está sujeito ao tratamento.
  */
-function hashFingerprint(ip: string, path: string): string {
+function hashFingerprint(ip: string): string {
   const today = new Date().toISOString().slice(0, 10) // YYYY-MM-DD
   // ANALYTICS_SALT é o segredo dedicado para analytics; JWT_SECRET é o fallback
-  const secret = process.env.ANALYTICS_SALT ?? process.env.JWT_SECRET ?? ''
+  // (|| e não ??: variável definida porém vazia também deve cair no fallback)
+  const secret = process.env.ANALYTICS_SALT || process.env.JWT_SECRET || ''
   const salt = today + secret
   const truncatedIp = truncateIp(ip)
-  return createHash('sha256').update(truncatedIp + path + salt).digest('hex')
+  return createHash('sha256').update(truncatedIp + salt).digest('hex')
 }
 
 export async function POST(request: NextRequest) {
@@ -77,7 +93,7 @@ export async function POST(request: NextRequest) {
       request.headers.get('x-real-ip') ||
       'unknown'
 
-    const fingerprint = hashFingerprint(ip, path)
+    const fingerprint = hashFingerprint(ip)
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
 
     const recent = await db
@@ -101,12 +117,12 @@ export async function POST(request: NextRequest) {
     let postTitle: string | null = null
 
     const segments = path.split('/').filter(Boolean)
-    if (segments.length === 1 && !['busca'].includes(segments[0])) {
+    if (segments.length === 1 && !['busca', 'politica-de-privacidade'].includes(segments[0])) {
       const slug = segments[0]
       const postResult = await db
         .select({ id: posts.id, slug: posts.slug, title: posts.title })
         .from(posts)
-        .where(eq(posts.slug, slug))
+        .where(and(eq(posts.slug, slug), eq(posts.status, 'published')))
         .limit(1)
       if (postResult.length > 0) {
         postId = postResult[0].id

@@ -27,6 +27,7 @@ import type { Metadata } from 'next'
 import AdSenseScript from '@/components/blog/AdSenseScript'
 import { CookieConsentBanner } from '@/components/blog/CookieConsentBanner'
 import { FacebookPixel } from '@/components/blog/FacebookPixel'
+import { AnalyticsTracker } from '@/components/blog/AnalyticsTracker'
 
 // ISR: páginas públicas servidas de cache e regeneradas no máximo a cada 5 min.
 // Sob carga, isso evita uma rodada de queries TCP ao Postgres por visita
@@ -195,6 +196,7 @@ export default async function PublicLayout({ children }: { children: React.React
       )}
       <FacebookPixel config={facebook_pixel} />
       <CookieConsentBanner />
+      <AnalyticsTracker />
     </div>
   )
 }
