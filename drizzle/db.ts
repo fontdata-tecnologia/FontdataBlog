@@ -64,10 +64,18 @@ export const db = new Proxy({} as PostgresJsDatabase<typeof schema>, {
   },
 })
 
-export const client = new Proxy({} as ReturnType<typeof postgres>, {
+// O target precisa ser uma função para o trap `apply` existir: o client do
+// postgres-js é ele próprio uma função (tagged template `` client`...` ``),
+// então o Proxy encaminha tanto acesso a propriedade (.unsafe, .end) quanto
+// a invocação direta para o client real.
+export const client = new Proxy((() => {}) as unknown as ReturnType<typeof postgres>, {
   get(_target, prop) {
     // ensure getDb() has been called so global._pgClient is set
     getDb()
     return global._pgClient![prop as keyof ReturnType<typeof postgres>]
+  },
+  apply(_target, _thisArg, args) {
+    getDb()
+    return (global._pgClient as unknown as (...a: unknown[]) => unknown)(...args)
   },
 })
