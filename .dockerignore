@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.example
+npm-debug.log
+README.md
+docs
+.claude
+.opencode
+public/uploads/*
+!public/uploads/.gitkeep

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import path from 'path'
 import { cookies } from 'next/headers'
 import { verifyToken } from '@/lib/auth'
-import { supabaseAdmin, STORAGE_BUCKET } from '@/lib/supabase-admin'
+import { uploadObject } from '@/lib/storage'
 
 const MAX_SIZE = 5 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml']
@@ -34,18 +34,11 @@ export async function POST(request: NextRequest) {
   const filename = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
 
   const bytes = await file.arrayBuffer()
-  const { error } = await supabaseAdmin.storage
-    .from(STORAGE_BUCKET)
-    .upload(filename, Buffer.from(bytes), { contentType: file.type })
-
-  if (error) {
-    console.error('Supabase upload error:', error)
+  try {
+    const url = await uploadObject(filename, Buffer.from(bytes), file.type)
+    return NextResponse.json({ url })
+  } catch (err) {
+    console.error('Storage upload error:', err)
     return NextResponse.json({ error: 'Erro ao fazer upload da imagem' }, { status: 500 })
   }
-
-  const { data: { publicUrl } } = supabaseAdmin.storage
-    .from(STORAGE_BUCKET)
-    .getPublicUrl(filename)
-
-  return NextResponse.json({ url: publicUrl })
 }

@@ -3,7 +3,7 @@ import { aiChat, callOpenRouterImage } from '@/lib/ai'
 import { getAgentConfig } from '@/lib/agent-configs'
 import { getAgentsExtra } from '@/lib/firecrawl'
 import { getPexelsApiKey, searchPexelsPhoto } from '@/lib/pexels'
-import { supabaseAdmin, STORAGE_BUCKET, normalizeImageMime } from '@/lib/supabase-admin'
+import { uploadObject, normalizeImageMime } from '@/lib/storage'
 import { getSettings } from '@/lib/settings'
 import { generateGradientCover, generateGeometricCover } from '@/lib/cover-svg'
 import { AgentContext, AgentResult } from '@/lib/agents/types'
@@ -118,13 +118,12 @@ export async function runDesignerAgent(
     : '.png'
   const filename = `agent-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
 
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from(STORAGE_BUCKET)
-    .upload(filename, imageBuffer, { contentType: uploadContentType })
-
-  if (uploadError) throw new Error(`Upload falhou: ${uploadError.message}`)
-
-  const { data: { publicUrl } } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(filename)
+  let publicUrl: string
+  try {
+    publicUrl = await uploadObject(filename, imageBuffer, uploadContentType)
+  } catch (uploadError) {
+    throw new Error(`Upload falhou: ${uploadError instanceof Error ? uploadError.message : String(uploadError)}`)
+  }
 
   return {
     success: true,

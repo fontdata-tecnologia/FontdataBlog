@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { checkAllFeeds } from '@/lib/rss-automation'
+import { isAuthorizedCron } from '@/lib/cron-auth'
 
 export const maxDuration = 300
 export const dynamic = 'force-dynamic'
 
+// Auth: Bearer CRON_SECRET (com fallback legado a SUPABASE_SERVICE_ROLE_KEY).
 export async function POST(request: NextRequest) {
-  const authHeader = request.headers.get('authorization')
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!serviceRoleKey || authHeader !== `Bearer ${serviceRoleKey}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

@@ -1,101 +1,109 @@
 import 'dotenv/config'
-import { createClient } from '@supabase/supabase-js'
-import { readFile, readdir, unlink } from 'fs/promises'
-import path from 'path'
 import { db } from '../drizzle/db'
-import { posts } from '../drizzle/schema'
+import { posts, siteSettings } from '../drizzle/schema'
 import { isNotNull, eq } from 'drizzle-orm'
+import { uploadObject } from '../lib/storage'
 
-const BUCKET = 'uploads'
+/**
+ * Migração de imagens: Supabase Storage → Google Cloud Storage.
+ *
+ * Estratégia (sem depender do SDK do Supabase): varre as URLs de imagem já
+ * gravadas no banco (`posts.cover_image`, `<img src>` em `posts.content` e a
+ * logo em `site_settings`), baixa cada objeto pela URL pública do Supabase,
+ * reenvia ao GCS via `uploadObject()` e reescreve as URLs no banco.
+ *
+ * Idempotente: URLs que já apontam para o GCS são ignoradas.
+ *
+ * Pré-requisitos de ambiente: GCS_BUCKET (+ credenciais GCS) e DATABASE_URL
+ * apontando para o banco que contém os registros a migrar.
+ */
+
+// Captura URLs de objetos do Supabase Storage (bucket público `uploads`).
+const SUPABASE_STORAGE_RE =
+  /https?:\/\/[a-z0-9-]+\.supabase\.co\/storage\/v1\/object\/public\/uploads\/([^\s"'<>)]+)/gi
 
 function mimeFromExt(filename: string): string {
-  const ext = path.extname(filename).toLowerCase()
-  if (ext === '.jpg' || ext === '.jpeg') return 'image/jpeg'
-  if (ext === '.png') return 'image/png'
-  if (ext === '.webp') return 'image/webp'
+  const ext = (filename.split('.').pop() ?? '').toLowerCase()
+  if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg'
+  if (ext === 'png') return 'image/png'
+  if (ext === 'webp') return 'image/webp'
+  if (ext === 'svg') return 'image/svg+xml'
   return 'image/gif'
 }
 
+const urlMap = new Map<string, string>()
+
+/** Baixa do Supabase e reenvia ao GCS uma vez por URL; retorna a nova URL. */
+async function migrateUrl(oldUrl: string, objectPath: string): Promise<string | null> {
+  if (urlMap.has(oldUrl)) return urlMap.get(oldUrl)!
+
+  const res = await fetch(oldUrl)
+  if (!res.ok) {
+    console.error(`✗ Falha ao baixar ${oldUrl}: HTTP ${res.status}`)
+    return null
+  }
+  const buffer = Buffer.from(await res.arrayBuffer())
+  const contentType = res.headers.get('content-type')?.split(';')[0].trim() || mimeFromExt(objectPath)
+  const newUrl = await uploadObject(objectPath, buffer, contentType)
+  urlMap.set(oldUrl, newUrl)
+  console.log(`✔ ${objectPath}\n  ${oldUrl}\n  → ${newUrl}`)
+  return newUrl
+}
+
+/** Substitui todas as URLs Supabase de um texto pelas novas URLs do GCS. */
+async function rewriteText(text: string): Promise<string> {
+  const matches = Array.from(text.matchAll(SUPABASE_STORAGE_RE))
+  let result = text
+  for (const m of matches) {
+    const oldUrl = m[0]
+    const objectPath = decodeURIComponent(m[1])
+    const newUrl = await migrateUrl(oldUrl, objectPath)
+    if (newUrl) result = result.split(oldUrl).join(newUrl)
+  }
+  return result
+}
+
 async function main() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!process.env.GCS_BUCKET) throw new Error('GCS_BUCKET não configurado')
 
-  if (!supabaseUrl || !serviceKey) {
-    throw new Error('NEXT_PUBLIC_SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY são obrigatórios')
-  }
-
-  const supabase = createClient(supabaseUrl, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
-
-  // Cria o bucket se não existir
-  const { data: buckets } = await supabase.storage.listBuckets()
-  if (!buckets?.find((b) => b.name === BUCKET)) {
-    const { error } = await supabase.storage.createBucket(BUCKET, { public: true })
-    if (error) throw new Error(`Falha ao criar bucket: ${error.message}`)
-    console.log('✔ Bucket criado:', BUCKET)
-  } else {
-    console.log('✔ Bucket já existe:', BUCKET)
-  }
-
-  const uploadsDir = path.join(process.cwd(), 'public', 'uploads')
-  const files = (await readdir(uploadsDir)).filter((f) => f !== '.gitkeep')
-
-  if (files.length === 0) {
-    console.log('Nenhum arquivo local encontrado para migrar.')
-    return
-  }
-
-  console.log(`\nMigrando ${files.length} arquivo(s)...`)
-  const urlMap: Record<string, string> = {}
-
-  for (const filename of files) {
-    const filePath = path.join(uploadsDir, filename)
-    const buffer = await readFile(filePath)
-    const contentType = mimeFromExt(filename)
-
-    const { error } = await supabase.storage
-      .from(BUCKET)
-      .upload(filename, buffer, { contentType, upsert: true })
-
-    if (error) {
-      console.error(`✗ Falha ao enviar ${filename}:`, error.message)
-      continue
-    }
-
-    const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(filename)
-    urlMap[`/uploads/${filename}`] = publicUrl
-    console.log(`✔ ${filename}`)
-    console.log(`  ${publicUrl}`)
-  }
-
-  // Atualiza cover_image nos posts
-  console.log('\nAtualizando posts no banco...')
+  // 1. Posts: cover_image + content
   const allPosts = await db
-    .select({ id: posts.id, cover_image: posts.cover_image })
+    .select({ id: posts.id, cover_image: posts.cover_image, content: posts.content })
     .from(posts)
-    .where(isNotNull(posts.cover_image))
 
-  let updated = 0
+  let postsUpdated = 0
   for (const post of allPosts) {
-    const newUrl = post.cover_image ? urlMap[post.cover_image] : null
-    if (newUrl) {
-      await db.update(posts).set({ cover_image: newUrl }).where(eq(posts.id, post.id))
-      console.log(`✔ Post ${post.id}: ${post.cover_image} → ${newUrl}`)
-      updated++
+    const newCover = post.cover_image ? await rewriteText(post.cover_image) : post.cover_image
+    const newContent = post.content ? await rewriteText(post.content) : post.content
+
+    if (newCover !== post.cover_image || newContent !== post.content) {
+      await db
+        .update(posts)
+        .set({ cover_image: newCover, content: newContent ?? '' })
+        .where(eq(posts.id, post.id))
+      postsUpdated++
     }
   }
+  console.log(`\n${postsUpdated} post(s) atualizado(s).`)
 
-  console.log(`\n${updated} post(s) atualizado(s).`)
+  // 2. site_settings: valores que contenham URLs do Supabase Storage (ex.: logo)
+  const settings = await db
+    .select({ key: siteSettings.key, value: siteSettings.value })
+    .from(siteSettings)
+    .where(isNotNull(siteSettings.value))
 
-  // Remove arquivos locais
-  console.log('\nRemovendo arquivos locais...')
-  for (const filename of Object.keys(urlMap).map((k) => k.replace('/uploads/', ''))) {
-    await unlink(path.join(uploadsDir, filename))
-    console.log(`✔ Removido: ${filename}`)
+  let settingsUpdated = 0
+  for (const s of settings) {
+    if (!s.value || !s.value.includes('.supabase.co/storage/')) continue
+    const newValue = await rewriteText(s.value)
+    if (newValue !== s.value) {
+      await db.update(siteSettings).set({ value: newValue }).where(eq(siteSettings.key, s.key))
+      settingsUpdated++
+    }
   }
+  console.log(`${settingsUpdated} configuração(ões) atualizada(s).`)
 
-  console.log('\nMigração concluída!')
+  console.log(`\nMigração concluída! ${urlMap.size} imagem(ns) migrada(s) para o GCS.`)
 }
 
 main().catch((err) => {

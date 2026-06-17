@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin, STORAGE_BUCKET } from '@/lib/supabase-admin'
+import { uploadObject } from '@/lib/storage'
 
 export const dynamic = 'force-dynamic'
 
@@ -65,18 +65,13 @@ export async function POST(request: Request) {
     const ext = isSvgUrl ? '.svg' : (effectiveType === 'image/png' ? '.png' : effectiveType === 'image/jpeg' ? '.jpg' : effectiveType === 'image/webp' ? '.webp' : '.img')
     const filename = `logo-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
 
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(STORAGE_BUCKET)
-      .upload(filename, Buffer.from(bytes), { contentType: effectiveType })
-
-    if (uploadError) {
+    let publicUrl: string
+    try {
+      publicUrl = await uploadObject(filename, Buffer.from(bytes), effectiveType)
+    } catch (uploadError) {
       console.error('[fetch-logo] upload error:', uploadError)
       return NextResponse.json({ error: 'Erro ao salvar imagem no storage' }, { status: 500 })
     }
-
-    const { data: { publicUrl } } = supabaseAdmin.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(filename)
 
     return NextResponse.json({ url: publicUrl })
   } catch (err) {

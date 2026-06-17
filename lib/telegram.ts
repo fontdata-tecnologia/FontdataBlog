@@ -5,7 +5,7 @@ import { siteSettings, posts } from '@/drizzle/schema'
 import { eq } from 'drizzle-orm'
 import { aiChat, callOpenRouterImage, getPromptFromDB } from '@/lib/ai'
 import { generateSlug } from '@/lib/slug'
-import { supabaseAdmin, STORAGE_BUCKET } from '@/lib/supabase-admin'
+import { uploadObject } from '@/lib/storage'
 
 const sanitizeOptions: sanitizeHtml.IOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h2', 'h3', 'img']),
@@ -208,14 +208,7 @@ JSON válido (sem markdown):
       : contentType.includes('webp') ? '.webp' : '.png'
     const filename = `telegram-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
 
-    const { error: uploadError } = await supabaseAdmin.storage
-      .from(STORAGE_BUCKET)
-      .upload(filename, imageBuffer, { contentType })
-
-    if (!uploadError) {
-      const { data: { publicUrl } } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(filename)
-      coverImageUrl = publicUrl
-    }
+    coverImageUrl = await uploadObject(filename, imageBuffer, contentType)
   } catch (imgErr) {
     console.error('[Telegram] Image generation failed (continuing without image):', imgErr)
   }

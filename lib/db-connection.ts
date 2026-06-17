@@ -76,15 +76,53 @@ export function poolMaxForMode(mode: DbMode): number {
   return mode === 'transaction' ? 10 : 1
 }
 
-function makeClient(url: string): ReturnType<typeof postgres> {
-  return postgres(url, {
-    ssl: { rejectUnauthorized: false },
-    max: poolMaxForMode(detectDbMode(url)),
+/** Heurística simples para identificar URLs do Supabase (pooler ou direct). */
+function isSupabaseUrl(url: string): boolean {
+  return /supabase\.(co|com)/.test(url)
+}
+
+/**
+ * Configuração de SSL via env `DB_SSL`:
+ * - `disable`/`false`/`off` → sem SSL (rede privada típica de Postgres dedicado)
+ * - `require`/`no-verify`   → SSL sem validar a CA (rejectUnauthorized:false)
+ * - `verify`/`verify-full`  → SSL com validação completa da CA
+ * Sem `DB_SSL`: URLs do Supabase mantêm o comportamento antigo (SSL sem verificar);
+ * Postgres próprio em rede privada cai em "sem SSL" como padrão.
+ */
+export function getSslConfig(url: string): false | { rejectUnauthorized: boolean } {
+  const mode = (process.env.DB_SSL ?? '').toLowerCase().trim()
+  if (mode === 'disable' || mode === 'false' || mode === 'off') return false
+  if (mode === 'require' || mode === 'no-verify') return { rejectUnauthorized: false }
+  if (mode === 'verify' || mode === 'verify-full') return { rejectUnauthorized: true }
+  // Padrão sem env: Supabase exige SSL; servidor próprio em rede privada não.
+  return isSupabaseUrl(url) ? { rejectUnauthorized: false } : false
+}
+
+/**
+ * Tamanho do pool. `DB_POOL_MAX` tem prioridade. No Coolify o app roda como um
+ * processo Node único e longevo (não serverless), então um pool real (10) é
+ * adequado. URLs do Supabase mantêm a heurística por modo de pooler.
+ */
+export function getPoolMax(url: string): number {
+  const fromEnv = parseInt(process.env.DB_POOL_MAX ?? '', 10)
+  if (!Number.isNaN(fromEnv) && fromEnv > 0) return fromEnv
+  return isSupabaseUrl(url) ? poolMaxForMode(detectDbMode(url)) : 10
+}
+
+/** Opções do driver `postgres` compartilhadas por toda a aplicação. */
+export function pgOptions(url: string) {
+  return {
+    ssl: getSslConfig(url),
+    max: getPoolMax(url),
     prepare: false,
     connect_timeout: 10,
     idle_timeout: 30,
     max_lifetime: 60 * 10,
-  })
+  } as const
+}
+
+function makeClient(url: string): ReturnType<typeof postgres> {
+  return postgres(url, pgOptions(url))
 }
 
 /**

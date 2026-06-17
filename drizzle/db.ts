@@ -1,7 +1,7 @@
 import postgres from 'postgres'
 import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import * as schema from './schema'
-import { detectDbMode, poolMaxForMode } from '@/lib/db-connection'
+import { pgOptions } from '@/lib/db-connection'
 
 declare global {
   // eslint-disable-next-line no-var
@@ -13,19 +13,12 @@ declare global {
 }
 
 function makeClient(url: string): ReturnType<typeof postgres> {
-  // O max do pool é derivado do modo de conexão (porta da URL):
-  // - session pooler (5432) / direct: max:1 — o session pooler limita a ~15
-  //   conexões e cada lambda no Fluid Compute mantém seu próprio pool.
-  // - transaction pooler (6543): max:10 — aguenta muitas conexões curtas.
-  // O modo é configurável em /admin → Banco de Dados (reescreve a porta da URL).
-  return postgres(url, {
-    ssl: { rejectUnauthorized: false },
-    max: poolMaxForMode(detectDbMode(url)),
-    prepare: false,
-    connect_timeout: 10,
-    idle_timeout: 20,
-    max_lifetime: 60 * 5,
-  })
+  // Opções (SSL, tamanho do pool) centralizadas em lib/db-connection.ts:
+  // - DB_SSL controla o SSL (Postgres próprio em rede privada normalmente sem SSL).
+  // - DB_POOL_MAX controla o pool; no Coolify o app é um processo Node único e
+  //   longevo, então usa um pool real (10) em vez do max:1 do antigo serverless.
+  // URLs do Supabase mantêm a heurística por modo de pooler para compatibilidade.
+  return postgres(url, pgOptions(url))
 }
 
 /**

@@ -14,7 +14,7 @@
     "prepare": "husky"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.106.1",
+    "@google-cloud/storage": "^7.21.0",
     "@tiptap/extension-image": "^2.3.0",
     "@tiptap/extension-link": "^2.3.0",
     "@tiptap/extension-placeholder": "^2.3.0",

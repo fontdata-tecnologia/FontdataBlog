@@ -5,7 +5,7 @@ import { verifyToken } from '@/lib/auth'
 import { aiChat, callOpenRouterImage, getPromptFromDB } from '@/lib/ai'
 import { getAgentsExtra } from '@/lib/firecrawl'
 import { getPexelsApiKey, searchPexelsPhoto } from '@/lib/pexels'
-import { supabaseAdmin, STORAGE_BUCKET, normalizeImageMime } from '@/lib/supabase-admin'
+import { uploadObject, normalizeImageMime } from '@/lib/storage'
 import { getSettings } from '@/lib/settings'
 import { generateGradientCover, generateGeometricCover } from '@/lib/cover-svg'
 
@@ -37,20 +37,12 @@ async function uploadBufferToStorage(
             : '.png'
   const filename = `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
 
-  const { error: uploadError } = await supabaseAdmin.storage
-    .from(STORAGE_BUCKET)
-    .upload(filename, imageBuffer, { contentType })
-
-  if (uploadError) {
-    console.error('Supabase upload error:', uploadError)
+  try {
+    return await uploadObject(filename, imageBuffer, contentType)
+  } catch (uploadError) {
+    console.error('Storage upload error:', uploadError)
     throw new Error('Erro ao salvar imagem')
   }
-
-  const {
-    data: { publicUrl },
-  } = supabaseAdmin.storage.from(STORAGE_BUCKET).getPublicUrl(filename)
-
-  return publicUrl
 }
 
 async function handleCode(

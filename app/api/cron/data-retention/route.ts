@@ -1,25 +1,20 @@
 // app/api/cron/data-retention/route.ts
 // Art. 15/16 LGPD — eliminação automática de dados após prazo de retenção
-// Autenticado por SUPABASE_SERVICE_ROLE_KEY como Bearer token.
-// Agendado via pg_cron — execução diária.
+// Autenticado por Bearer CRON_SECRET (fallback legado: SUPABASE_SERVICE_ROLE_KEY).
+// Agendado via Scheduled Task do Coolify — execução diária.
 
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/drizzle/db'
 import { pageViews, automationLogs, aiRequestLogs, newsletterSubscribers } from '@/drizzle/schema'
 import { lt, and, eq, isNotNull } from 'drizzle-orm'
-import { sql } from 'drizzle-orm'
 import { getLgpdSettings, DEFAULT_LGPD } from '@/lib/settings'
+import { isAuthorizedCron } from '@/lib/cron-auth'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 300
 
 export async function POST(request: NextRequest) {
-  // Verificação de autenticação — Bearer SUPABASE_SERVICE_ROLE_KEY
-  const authHeader = request.headers.get('authorization') ?? ''
-  const token = authHeader.replace('Bearer ', '').trim()
-  const expectedToken = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''
-
-  if (!expectedToken || token !== expectedToken) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: 'Não autorizado.' }, { status: 401 })
   }
 

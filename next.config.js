@@ -1,11 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Build standalone para imagem Docker enxuta no Coolify (gera .next/standalone).
+  output: 'standalone',
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'i.imgur.com' },
       { protocol: 'https', hostname: '**.cloudinary.com' },
       { protocol: 'https', hostname: 'images.unsplash.com' },
-      { protocol: 'https', hostname: '**.supabase.co' },
+      { protocol: 'https', hostname: 'storage.googleapis.com' },
     ],
   },
   experimental: {
@@ -39,7 +41,7 @@ const nextConfig = {
           },
           {
             // CSP permissiva o suficiente para TipTap (editor rico), imagens remotas
-            // autorizadas (imgur, cloudinary, unsplash, supabase) e Resend (pixel de tracking)
+            // autorizadas (imgur, cloudinary, unsplash, Google Cloud Storage) e Resend (pixel de tracking)
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
@@ -50,9 +52,9 @@ const nextConfig = {
               // Fontes: Google Fonts
               "font-src 'self' https://fonts.gstatic.com",
               // Imagens: self + data URIs + todos os domínios autorizados
-              "img-src 'self' data: blob: https://i.imgur.com https://*.cloudinary.com https://images.unsplash.com https://*.supabase.co",
-              // Conexões: self + Supabase + OpenRouter
-              "connect-src 'self' https://*.supabase.co https://openrouter.ai https://api.resend.com",
+              "img-src 'self' data: blob: https://i.imgur.com https://*.cloudinary.com https://images.unsplash.com https://storage.googleapis.com",
+              // Conexões: self + OpenRouter + Resend
+              "connect-src 'self' https://openrouter.ai https://api.resend.com",
               // Frames: nenhum
               "frame-ancestors 'none'",
               // Formulários: apenas self
