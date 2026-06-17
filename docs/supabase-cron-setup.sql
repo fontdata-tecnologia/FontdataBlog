@@ -37,8 +37,8 @@ select cron.schedule(
 
 -- ─── 3. Cron: automação de geração de artigos a cada 15 minutos ──────────────
 -- O endpoint verifica internamente se já é hora de executar conforme
--- o intervalo configurado no admin. Rodar a cada 15 minutos garante
--- granularidade adequada para intervalos curtos (ex: a cada 30 minutos).
+-- o intervalo configurado no admin. O intervalo mínimo permitido no admin é
+-- 15 minutos, então rodar a cada 15 minutos cobre todos os intervalos.
 
 select cron.schedule(
   'automation-check-every-15min',
@@ -76,6 +76,25 @@ select cron.schedule(
   $$
 );
 
+-- ─── 5. Cron: retenção de dados LGPD (diário, 03:00 UTC) ────────────────────
+-- Art. 15/16 LGPD — elimina dados após prazo de retenção:
+-- page_views > 12 meses | automation_logs/ai_request_logs > 6 meses | unsubscribed > 30 dias
+
+select cron.schedule(
+  'lgpd-data-retention',
+  '0 3 * * *',
+  $$
+  select net.http_post(
+    url := (select decrypted_secret from vault.decrypted_secrets where name = 'app_url') || '/api/cron/data-retention',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key')
+    ),
+    body := '{}'::jsonb
+  ) as request_id;
+  $$
+);
+
 -- ─── Verificar jobs agendados ─────────────────────────────────────────────────
 
 select jobid, jobname, schedule, command, active
@@ -87,3 +106,4 @@ order by jobid;
 -- select cron.unschedule('rss-check-every-30min');
 -- select cron.unschedule('automation-check-every-15min');
 -- select cron.unschedule('source-crawlers-check-every-15min');
+-- select cron.unschedule('lgpd-data-retention');

@@ -3,6 +3,21 @@ import { callOpenRouter } from '@/lib/ai'
 import { getAgentConfig } from '@/lib/agent-configs'
 import { getArticleConfig, buildArticleConfigPromptSection } from '@/lib/article-config'
 import { AgentContext, AgentResult } from '@/lib/agents/types'
+import { extractJson } from '@/lib/json-extract'
+
+type CopywriterJson = { title: string; excerpt: string; content: string }
+
+function isValidCopywriterJson(v: unknown): v is CopywriterJson {
+  if (!v || typeof v !== 'object') return false
+  const o = v as Record<string, unknown>
+  return typeof o.title === 'string' && typeof o.excerpt === 'string' && typeof o.content === 'string'
+}
+
+const PARSE_ERROR_MSG =
+  'O modelo gratuito não retornou JSON válido. Tente novamente ou configure um modelo pago para o copywriter em Configurações → IA.'
+
+const JSON_RETRY_MSG =
+  'Sua resposta anterior não era JSON válido. Responda SOMENTE o objeto JSON, sem texto fora dele.'
 
 export async function runCopywriterAgent(
   ctx: AgentContext,
@@ -33,27 +48,49 @@ ${sourcesBlock}
 
 Mínimo de ${articleConfig.minWords} palavras. Responda em JSON (sem markdown): { "title": "...", "excerpt": "...", "content": "HTML completo" }`
 
+  const baseMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    { role: 'system', content: config.prompt },
+    { role: 'user', content: userMsg },
+  ]
+
   const resp = await callOpenRouter(
     {
       model: config.model,
       feature: 'content_generation',
-      messages: [
-        { role: 'system', content: config.prompt },
-        { role: 'user', content: userMsg },
-      ],
+      messages: baseMessages,
       temperature: articleConfig.creativity,
       max_tokens: 6000,
+      jsonMode: true,
     },
     apiKey
   )
 
-  let parsed: { title: string; excerpt: string; content: string }
-  try {
-    const raw = resp.choices[0]?.message?.content ?? ''
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    parsed = JSON.parse(cleaned)
-  } catch {
-    return { success: false, message: 'Erro ao parsear resposta do copywriter', error: 'PARSE_ERROR' }
+  const raw = resp.choices[0]?.message?.content ?? ''
+  let parsed = extractJson<CopywriterJson>(raw)
+
+  if (!isValidCopywriterJson(parsed)) {
+    // Um retry corretivo: adiciona o output anterior como assistant e pede JSON puro.
+    const retryResp = await callOpenRouter(
+      {
+        model: config.model,
+        feature: 'content_generation',
+        messages: [
+          ...baseMessages,
+          { role: 'assistant', content: raw },
+          { role: 'user', content: JSON_RETRY_MSG },
+        ],
+        temperature: articleConfig.creativity,
+        max_tokens: 6000,
+        jsonMode: true,
+      },
+      apiKey
+    )
+    const retryRaw = retryResp.choices[0]?.message?.content ?? ''
+    parsed = extractJson<CopywriterJson>(retryRaw)
+  }
+
+  if (!isValidCopywriterJson(parsed)) {
+    return { success: false, message: PARSE_ERROR_MSG, error: 'PARSE_ERROR' }
   }
 
   return {
@@ -95,30 +132,52 @@ ${ctx.articleContent.slice(0, 10000)}
 Responda SOMENTE com JSON válido (sem markdown, sem texto fora do JSON):
 {"title":"<título>","excerpt":"<excerpt>","content":"<HTML corrigido>"}`
 
+  const baseMessages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
+    {
+      role: 'system',
+      content: 'Você é um editor preciso. Recebe um artigo HTML e uma lista de problemas específicos. Corrija APENAS os problemas indicados, preservando todo o restante do conteúdo, estrutura e estilo. Responda em JSON válido sem nenhum texto fora do JSON.',
+    },
+    { role: 'user', content: userMsg },
+  ]
+
   const resp = await callOpenRouter(
     {
       model: config.model,
       feature: 'content_generation',
-      messages: [
-        {
-          role: 'system',
-          content: 'Você é um editor preciso. Recebe um artigo HTML e uma lista de problemas específicos. Corrija APENAS os problemas indicados, preservando todo o restante do conteúdo, estrutura e estilo. Responda em JSON válido sem nenhum texto fora do JSON.',
-        },
-        { role: 'user', content: userMsg },
-      ],
+      messages: baseMessages,
       temperature: 0.3,
       max_tokens: 8000,
+      jsonMode: true,
     },
     apiKey
   )
 
-  let parsed: { title: string; excerpt: string; content: string }
-  try {
-    const raw = resp.choices[0]?.message?.content ?? ''
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    parsed = JSON.parse(cleaned)
-  } catch {
-    return { success: false, message: 'Erro ao parsear revisão do copywriter', error: 'PARSE_ERROR' }
+  const raw = resp.choices[0]?.message?.content ?? ''
+  let parsed = extractJson<CopywriterJson>(raw)
+
+  if (!isValidCopywriterJson(parsed)) {
+    // Um retry corretivo.
+    const retryResp = await callOpenRouter(
+      {
+        model: config.model,
+        feature: 'content_generation',
+        messages: [
+          ...baseMessages,
+          { role: 'assistant', content: raw },
+          { role: 'user', content: JSON_RETRY_MSG },
+        ],
+        temperature: 0.3,
+        max_tokens: 8000,
+        jsonMode: true,
+      },
+      apiKey
+    )
+    const retryRaw = retryResp.choices[0]?.message?.content ?? ''
+    parsed = extractJson<CopywriterJson>(retryRaw)
+  }
+
+  if (!isValidCopywriterJson(parsed)) {
+    return { success: false, message: PARSE_ERROR_MSG, error: 'PARSE_ERROR' }
   }
 
   return {

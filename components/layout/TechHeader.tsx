@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { SearchBar } from '@/components/blog/SearchBar'
 import { db } from '@/drizzle/db'
 import { categories } from '@/drizzle/schema'
@@ -29,7 +30,7 @@ export async function TechHeader({ blogName, logoUrl }: Props) {
             className="flex items-center gap-2.5 shrink-0 hover:opacity-80 transition-opacity"
           >
             {logoUrl ? (
-              <img src={logoUrl} alt="" className="h-7 w-auto" />
+              <Image src={logoUrl} alt="" height={28} width={120} className="h-7 w-auto" unoptimized />
             ) : (
               <span className="text-white text-xl font-black tracking-tight">
                 {blogName}

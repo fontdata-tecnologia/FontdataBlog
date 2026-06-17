@@ -4,6 +4,9 @@ import sanitizeHtml from 'sanitize-html'
 import { db } from '@/drizzle/db'
 import { posts, postCategories, postTags, categories, tags } from '@/drizzle/schema'
 import { eq } from 'drizzle-orm'
+import { revalidatePublicPosts } from '@/lib/revalidate'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
+import { triggerNewsletterSend } from '@/lib/newsletter-trigger'
 
 const sanitizeOptions: sanitizeHtml.IOptions = {
   allowedTags: sanitizeHtml.defaults.allowedTags.concat(['h2', 'h3', 'img']),
@@ -57,6 +60,7 @@ const updateSchema = z.object({
   excerpt: z.string().optional(),
   cover_image: z.string().url().or(z.string().startsWith('/uploads/')).optional().nullable(),
   status: z.enum(['draft', 'published']).optional(),
+  author_name: z.string().max(255).optional().nullable(),
   category_ids: z.array(z.number().int().positive()).optional(),
   tag_ids: z.array(z.number().int().positive()).optional(),
 })
@@ -122,6 +126,21 @@ export async function PUT(
       }
     }
 
+    // Revalida o cache público: slug antigo (se mudou) e o atual.
+    if (existing[0].slug !== updated.slug) revalidatePublicPosts(existing[0].slug)
+    revalidatePublicPosts(updated.slug)
+
+    // Emite evento de webhook adequado
+    const wasPublished = existing[0].status === 'published'
+    if (postData.status === 'published' && !wasPublished) {
+      // Virou publicado agora — emite post_published
+      dispatchWebhookEvent('post_published', { post_id: updated.id, title: updated.title, slug: updated.slug, status: updated.status })
+      triggerNewsletterSend(updated.id)
+    } else {
+      // Update de post existente
+      dispatchWebhookEvent('post_updated', { post_id: updated.id, title: updated.title, slug: updated.slug, status: updated.status })
+    }
+
     return NextResponse.json({ post: updated })
   } catch {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })
@@ -142,6 +161,7 @@ export async function DELETE(
     }
 
     await db.delete(posts).where(eq(posts.id, id))
+    revalidatePublicPosts(existing[0].slug)
     return NextResponse.json({ success: true })
   } catch {
     return NextResponse.json({ error: 'Erro interno do servidor' }, { status: 500 })

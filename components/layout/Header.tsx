@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { SearchBar } from '@/components/blog/SearchBar'
 
 interface Props {
@@ -11,7 +12,7 @@ export function Header({ blogName, logoUrl }: Props) {
     <header className="bg-brand-primary text-white shadow-md">
       <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity shrink-0">
-          {logoUrl && <img src={logoUrl} alt="" className="h-9 w-auto" />}
+          {logoUrl && <Image src={logoUrl} alt="" height={36} width={120} className="h-9 w-auto" unoptimized />}
           <span className="text-xl font-bold tracking-tight">{blogName}</span>
         </Link>
 

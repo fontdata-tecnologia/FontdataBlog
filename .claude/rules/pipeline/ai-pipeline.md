@@ -25,12 +25,18 @@ Headline → Researcher → Analyst → Copywriter → Reviewer → CTA → Desi
 - Nunca persista princípios em arquivo — apenas na tabela `agent_configs` ou estrutura em memória durante o pipeline
 
 ## Modelos padrão por agente (fallback quando DB não tem configuração)
+O sistema é **gratuito por padrão**: todos os agentes de texto usam o Free Models
+Router do OpenRouter (`openrouter/free`), que escolhe automaticamente a melhor LLM
+gratuita. Só o Designer (imagem) usa um modelo pago, pois o Free Router é só texto.
+
 | Agente | Modelo padrão |
 |---|---|
-| Headline, Analyst, CTA | `openai/gpt-4o-mini` |
-| Copywriter, Reviewer | `openai/gpt-4o` |
-| Researcher | `openai/gpt-4o-mini` |
+| Headline, Researcher, Analyst, Copywriter, Reviewer, CTA, Publisher | `openrouter/free` |
 | Designer (imagem) | `openai/gpt-5-image` |
+
+A capa do artigo, porém, é gerada por padrão via **Pexels** (gratuito), não por IA —
+o default de `agents_extra.designer.image_source` é `'pexels'`. O modelo de imagem
+acima só é usado quando o usuário escolhe explicitamente capa gerada por IA.
 
 ## SSE (Server-Sent Events)
 - `lib/agent-pipeline.ts` usa SSE para streamar progresso — nunca substitua por WebSocket ou polling

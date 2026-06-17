@@ -90,12 +90,46 @@ export const DEFAULT_NEWSLETTER: NewsletterConfig = {
   subtitle: 'Receba os melhores artigos diretamente no seu e-mail.',
 }
 
+export interface ResendSettings {
+  api_key: string
+  from_email: string
+  auto_send: boolean
+}
+
+export const DEFAULT_RESEND: ResendSettings = {
+  api_key: '',
+  from_email: '',
+  auto_send: false,
+}
+
+// ────────────────────────────────────────────────
+// Facebook Pixel config
+// ────────────────────────────────────────────────
+
+export interface FacebookPixelConfig {
+  enabled: boolean
+  pixel_ids: string[]
+  track_pageview: boolean
+  track_viewcontent: boolean
+  track_lead: boolean
+}
+
+export const DEFAULT_FACEBOOK_PIXEL: FacebookPixelConfig = {
+  enabled: false,
+  pixel_ids: [],
+  track_pageview: true,
+  track_viewcontent: true,
+  track_lead: true,
+}
+
 export interface SiteSettings {
   template: string
   colors: ThemeColors
   company: CompanyInfo
   newsletter: NewsletterConfig
+  resend: ResendSettings
   design_system: DesignSystem
+  facebook_pixel: FacebookPixelConfig
 }
 
 const COLOR_DEFAULTS: Record<string, ThemeColors> = {
@@ -128,6 +162,24 @@ const COLOR_DEFAULTS: Record<string, ThemeColors> = {
     secondary: '#00B140',
     background: '#F4F4F4',
     surface: '#FFFFFF',
+  },
+  minimal: {
+    primary: '#111111',
+    secondary: '#6B7280',
+    background: '#FFFFFF',
+    surface: '#FFFFFF',
+  },
+  magazine: {
+    primary: '#1A1A1A',
+    secondary: '#C8102E',
+    background: '#F8F5F0',
+    surface: '#FFFFFF',
+  },
+  'dark-aurora': {
+    primary: '#8B5CF6',
+    secondary: '#22D3EE',
+    background: '#0B0F1A',
+    surface: '#141824',
   },
 }
 
@@ -191,8 +243,104 @@ export const getSettings = cache(async (): Promise<SiteSettings> => {
     const storedDS = map['design_system'] ? (JSON.parse(map['design_system']) as Partial<DesignSystem>) : {}
     const design_system: DesignSystem = { ...DEFAULT_DESIGN_SYSTEM, ...storedDS }
 
-    return { template, colors, company, newsletter, design_system }
+    const resend: ResendSettings = {
+      api_key: map['resend_api_key'] ?? '',
+      from_email: map['newsletter_from_email'] ?? '',
+      auto_send: map['newsletter_auto_send'] === 'true',
+    }
+
+    const storedFbPixel = map['facebook_pixel_config'] ? (JSON.parse(map['facebook_pixel_config']) as Partial<FacebookPixelConfig>) : {}
+    const facebook_pixel: FacebookPixelConfig = { ...DEFAULT_FACEBOOK_PIXEL, ...storedFbPixel }
+
+    return { template, colors, company, newsletter, resend, design_system, facebook_pixel }
   } catch {
-    return { template: 'default', colors: defaultColors('default'), company: DEFAULT_COMPANY, newsletter: DEFAULT_NEWSLETTER, design_system: DEFAULT_DESIGN_SYSTEM }
+    return { template: 'default', colors: defaultColors('default'), company: DEFAULT_COMPANY, newsletter: DEFAULT_NEWSLETTER, resend: DEFAULT_RESEND, design_system: DEFAULT_DESIGN_SYSTEM, facebook_pixel: DEFAULT_FACEBOOK_PIXEL }
+  }
+})
+
+
+// ────────────────────────────────────────────────
+// Chat assistant config
+// ────────────────────────────────────────────────
+
+export interface ChatAssistantConfig {
+  system_prompt: string
+  enabled_tools: boolean
+}
+
+export const DEFAULT_CHAT_ASSISTANT: ChatAssistantConfig = {
+  system_prompt: '',
+  enabled_tools: true,
+}
+
+export const getChatAssistantConfig = cache(async (): Promise<ChatAssistantConfig> => {
+  try {
+    const rows = await db.select().from(siteSettings)
+    const map = Object.fromEntries(rows.map((r) => [r.key, r.value ?? '']))
+    if (map['chat_assistant_config']) {
+      const parsed = JSON.parse(map['chat_assistant_config']) as Partial<ChatAssistantConfig>
+      return {
+        system_prompt: parsed.system_prompt ?? DEFAULT_CHAT_ASSISTANT.system_prompt,
+        enabled_tools: parsed.enabled_tools !== false,
+      }
+    }
+    return { ...DEFAULT_CHAT_ASSISTANT }
+  } catch {
+    return { ...DEFAULT_CHAT_ASSISTANT }
+  }
+})
+
+// ────────────────────────────────────────────────
+// LGPD settings
+// ────────────────────────────────────────────────
+
+export interface LgpdSettings {
+  dpo_name: string
+  dpo_email: string
+  controller_name: string
+  controller_cnpj: string
+  retention_pageviews_months: number
+  retention_logs_months: number
+  retention_unsubscribed_days: number
+  consent_text: string
+  consent_version: string
+}
+
+export const DEFAULT_LGPD: LgpdSettings = {
+  dpo_name: '',
+  dpo_email: '',
+  controller_name: '',
+  controller_cnpj: '',
+  retention_pageviews_months: 12,
+  retention_logs_months: 6,
+  retention_unsubscribed_days: 30,
+  consent_text: 'Li e aceito a Política de Privacidade',
+  consent_version: 'v1-2026-06',
+}
+
+export const getLgpdSettings = cache(async (): Promise<LgpdSettings> => {
+  try {
+    const rows = await db.select().from(siteSettings)
+    const map = Object.fromEntries(rows.map((r) => [r.key, r.value ?? '']))
+
+    return {
+      dpo_name: map['lgpd_dpo_name'] ?? DEFAULT_LGPD.dpo_name,
+      dpo_email: map['lgpd_dpo_email'] ?? DEFAULT_LGPD.dpo_email,
+      controller_name: map['lgpd_controller_name'] ?? DEFAULT_LGPD.controller_name,
+      controller_cnpj: map['lgpd_controller_cnpj'] ?? DEFAULT_LGPD.controller_cnpj,
+      retention_pageviews_months: map['lgpd_retention_pageviews_months']
+        ? Number(map['lgpd_retention_pageviews_months'])
+        : DEFAULT_LGPD.retention_pageviews_months,
+      retention_logs_months: map['lgpd_retention_logs_months']
+        ? Number(map['lgpd_retention_logs_months'])
+        : DEFAULT_LGPD.retention_logs_months,
+      retention_unsubscribed_days: map['lgpd_retention_unsubscribed_days']
+        ? Number(map['lgpd_retention_unsubscribed_days'])
+        : DEFAULT_LGPD.retention_unsubscribed_days,
+      consent_text: map['lgpd_consent_text'] ?? DEFAULT_LGPD.consent_text,
+      consent_version: map['lgpd_consent_version'] ?? DEFAULT_LGPD.consent_version,
+    }
+  } catch {
+    return { ...DEFAULT_LGPD }
   }
 })

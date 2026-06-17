@@ -28,6 +28,41 @@ const STEPS = [
   'Concluído',
 ]
 
+function extractProjectId(supabaseUrl: string): string | null {
+  try {
+    const match = supabaseUrl.match(/https:\/\/([a-z0-9]+)\.supabase\.co/i)
+    return match ? match[1] : null
+  } catch {
+    return null
+  }
+}
+
+async function detectRegion(projectId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://api.supabase.com/v1/projects/${projectId}`, {
+      headers: { 'Content-Type': 'application/json' },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    return data?.region ?? null
+  } catch {
+    return null
+  }
+}
+
+function buildConnectionString(projectId: string, region: string, password: string): string {
+  const host = `aws-0-${region}.pooler.supabase.com`
+  const encodedPassword = encodeURIComponent(password)
+  return `postgresql://postgres.${projectId}:${encodedPassword}@${host}:5432/postgres`
+}
+
+function injectPassword(connectionString: string, password: string): string {
+  if (!password) return connectionString
+  return connectionString
+    .replace(/\[YOUR-PASSWORD\]/gi, encodeURIComponent(password))
+    .replace(/\[PASSWORD\]/gi, encodeURIComponent(password))
+}
+
 export default function SetupPage() {
   const router = useRouter()
   const [step, setStep] = useState<Step>(1)
@@ -35,7 +70,14 @@ export default function SetupPage() {
   const [error, setError] = useState('')
   const [deploymentId, setDeploymentId] = useState('')
   const [deployUrl, setDeployUrl] = useState('')
+  const [warnings, setWarnings] = useState<string[]>([])
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const [supabaseProjectId, setSupabaseProjectId] = useState('')
+  const [detectedRegion, setDetectedRegion] = useState<string | null>(null)
+  const [detectingRegion, setDetectingRegion] = useState(false)
+  const [dbPassword, setDbPassword] = useState('')
+  const [connectionStringAuto, setConnectionStringAuto] = useState(false)
 
   const [state, setState] = useState<SetupState>({
     vercelToken: '',
@@ -53,6 +95,45 @@ export default function SetupPage() {
 
   function set(field: keyof SetupState, value: string | boolean | null) {
     setState((s) => ({ ...s, [field]: value }))
+  }
+
+  async function handleSupabaseUrlBlur(url: string) {
+    const pid = extractProjectId(url)
+    if (!pid) return
+    setSupabaseProjectId(pid)
+    setDetectingRegion(true)
+    setDetectedRegion(null)
+    setConnectionStringAuto(false)
+    const region = await detectRegion(pid)
+    setDetectedRegion(region)
+    setDetectingRegion(false)
+    if (region && dbPassword) {
+      const connStr = buildConnectionString(pid, region, dbPassword)
+      set('databaseUrl', connStr)
+      setConnectionStringAuto(true)
+    }
+  }
+
+  function handlePasswordChange(password: string) {
+    setDbPassword(password)
+    set('dbTested', false)
+    if (supabaseProjectId && detectedRegion) {
+      const connStr = buildConnectionString(supabaseProjectId, detectedRegion, password)
+      set('databaseUrl', connStr)
+      setConnectionStringAuto(true)
+    } else if (state.databaseUrl) {
+      const injected = injectPassword(state.databaseUrl, password)
+      if (injected !== state.databaseUrl) {
+        set('databaseUrl', injected)
+      }
+    }
+  }
+
+  function handleConnectionStringChange(value: string) {
+    setConnectionStringAuto(false)
+    set('dbTested', false)
+    const injected = dbPassword ? injectPassword(value, dbPassword) : value
+    set('databaseUrl', injected)
   }
 
   async function verifyVercel() {
@@ -145,6 +226,9 @@ export default function SetupPage() {
         return
       }
       setDeploymentId(data.deploymentId)
+      if (Array.isArray(data.warnings) && data.warnings.length > 0) {
+        setWarnings(data.warnings)
+      }
       pollDeployStatus(data.deploymentId)
     } catch {
       setError('Erro de conexão')
@@ -267,30 +351,97 @@ export default function SetupPage() {
               <div>
                 <h2 className="text-base font-semibold text-neutral-900 mb-1">Credenciais do Supabase</h2>
                 <p className="text-sm text-gray-500">
-                  Encontre em: Supabase Dashboard → Project Settings → Database / API.
+                  Preencha os campos abaixo — vamos gerar a connection string automaticamente quando possível.
                 </p>
               </div>
+
+              {/* Campo 1 — Supabase URL */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Database URL</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">URL do seu projeto Supabase</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={state.supabaseUrl}
+                    onChange={(e) => {
+                      set('supabaseUrl', e.target.value)
+                      const pid = extractProjectId(e.target.value)
+                      if (pid) setSupabaseProjectId(pid)
+                      else { setSupabaseProjectId(''); setDetectedRegion(null); setConnectionStringAuto(false) }
+                    }}
+                    onBlur={(e) => { if (e.target.value) handleSupabaseUrlBlur(e.target.value) }}
+                    placeholder="https://xxxxxxxxxxxx.supabase.co"
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent font-mono pr-8"
+                  />
+                  {detectingRegion && (
+                    <div className="absolute right-2 top-2.5 w-4 h-4 border-2 border-brand-primary border-t-transparent rounded-full animate-spin" />
+                  )}
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Encontre em:{' '}
+                  <a href="https://supabase.com/dashboard" target="_blank" rel="noopener noreferrer" className="text-brand-primary underline">
+                    supabase.com/dashboard
+                  </a>
+                  {' '}→ selecione o projeto → copie a URL do navegador
+                </p>
+                {detectedRegion && (
+                  <p className="text-xs text-green-600 mt-1">
+                    Regiao detectada: {detectedRegion}
+                  </p>
+                )}
+              </div>
+
+              {/* Campo 2 — Senha do banco */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Senha do banco de dados</label>
+                <input
+                  type="password"
+                  value={dbPassword}
+                  onChange={(e) => handlePasswordChange(e.target.value)}
+                  placeholder="A senha que voce definiu ao criar o projeto"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  E a senha escolhida em: Supabase Dashboard → Project Settings → Database → Database password
+                </p>
+              </div>
+
+              {/* Campo 3 — Connection String */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">Connection String (Session Pooler)</label>
+                  {connectionStringAuto && (
+                    <span className="text-xs text-green-600 bg-green-50 border border-green-200 rounded px-2 py-0.5">
+                      Gerado automaticamente
+                    </span>
+                  )}
+                </div>
+                {!detectedRegion && !detectingRegion && supabaseProjectId && (
+                  <div className="mb-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 text-xs text-amber-800">
+                    Nao conseguimos detectar a regiao automaticamente. Acesse o link abaixo, copie a Session Pooler string e cole aqui:
+                    <br />
+                    <a
+                      href={`https://supabase.com/dashboard/project/${supabaseProjectId}?showConnect=true&connectTab=direct&method=session`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-primary underline font-medium mt-1 inline-block"
+                    >
+                      Abrir configuracoes de conexao do projeto
+                    </a>
+                  </div>
+                )}
                 <input
                   type="password"
                   value={state.databaseUrl}
-                  onChange={(e) => { set('databaseUrl', e.target.value); set('dbTested', false) }}
-                  placeholder="postgresql://postgres:[SENHA]@db.[PROJETO].supabase.co:6543/postgres"
+                  onChange={(e) => handleConnectionStringChange(e.target.value)}
+                  placeholder="postgresql://postgres.xxx:senha@aws-0-regiao.pooler.supabase.com:5432/postgres"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent font-mono"
                 />
-                <p className="text-xs text-gray-400 mt-1">Use a connection string do pooler, porta 6543</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Formato: postgresql://postgres.{'{ref}'}:{'{senha}'}@aws-0-{'{regiao}'}.pooler.supabase.com:5432/postgres
+                </p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Supabase URL</label>
-                <input
-                  type="text"
-                  value={state.supabaseUrl}
-                  onChange={(e) => set('supabaseUrl', e.target.value)}
-                  placeholder="https://[PROJETO].supabase.co"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent font-mono"
-                />
-              </div>
+
+              {/* Campo 4 — Service Role Key */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Service Role Key</label>
                 <input
@@ -300,14 +451,30 @@ export default function SetupPage() {
                   placeholder="eyJ..."
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-primary focus:border-transparent font-mono"
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  Encontre em:{' '}
+                  {supabaseProjectId ? (
+                    <a
+                      href={`https://supabase.com/dashboard/project/${supabaseProjectId}/settings/api-keys/legacy`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-brand-primary underline"
+                    >
+                      Supabase Dashboard → API Keys (clique para abrir)
+                    </a>
+                  ) : (
+                    'Supabase Dashboard → Project Settings → API → Service Role Key'
+                  )}
+                </p>
               </div>
+
               <div className="flex gap-3">
                 <button
                   onClick={testDb}
                   disabled={!state.databaseUrl || !state.supabaseUrl || !state.serviceRoleKey || loading}
                   className="flex-1 border border-gray-300 text-gray-700 rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  {loading ? 'Testando...' : state.dbTested ? '✓ Conexão OK' : 'Testar conexão'}
+                  {loading ? 'Testando...' : state.dbTested ? 'Conexao OK' : 'Testar conexao'}
                 </button>
                 <button
                   onClick={() => setStep(3)}
@@ -434,6 +601,16 @@ export default function SetupPage() {
                   <span className="text-sm font-mono text-neutral-900">{state.adminEmail}</span>
                 </div>
               </div>
+              {warnings.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left space-y-1.5">
+                  <p className="text-[13px] font-medium text-amber-800">Atenção</p>
+                  <ul className="space-y-1">
+                    {warnings.map((w, i) => (
+                      <li key={i} className="text-[13px] text-amber-700">• {w}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {deployUrl && (
                 <p className="text-xs text-gray-400">
                   Deploy em:{' '}

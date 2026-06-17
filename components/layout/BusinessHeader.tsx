@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { SearchBar } from '@/components/blog/SearchBar'
 import { db } from '@/drizzle/db'
 import { categories } from '@/drizzle/schema'
@@ -24,7 +25,7 @@ export async function BusinessHeader({ blogName, logoUrl }: Props) {
     <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity shrink-0">
-          {logoUrl && <img src={logoUrl} alt="" className="h-8 w-auto" />}
+          {logoUrl && <Image src={logoUrl} alt="" height={32} width={120} className="h-8 w-auto" unoptimized />}
           <span className="text-lg font-bold tracking-tight whitespace-nowrap text-neutral-900">{blogName}</span>
         </Link>
 

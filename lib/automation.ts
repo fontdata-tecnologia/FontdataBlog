@@ -19,6 +19,35 @@ export async function getOrCreateAutomationConfig() {
   return row
 }
 
+/**
+ * Verifica se o horário atual está dentro da faixa de bloqueio [start, end].
+ * Suporta cruzamento de meia-noite (ex: 22:00–06:00).
+ *
+ * Os valores de time no Postgres chegam como string "HH:MM:SS" ou "HH:MM".
+ */
+function isInBlockedHours(blockStart: string | null, blockEnd: string | null): boolean {
+  if (!blockStart || !blockEnd) return false
+
+  // Extrai apenas HH:MM
+  const parseMinutes = (t: string) => {
+    const [h, m] = t.split(':').map(Number)
+    return h * 60 + (m ?? 0)
+  }
+
+  const now = new Date()
+  const nowMinutes = now.getHours() * 60 + now.getMinutes()
+  const startMinutes = parseMinutes(blockStart)
+  const endMinutes = parseMinutes(blockEnd)
+
+  if (startMinutes <= endMinutes) {
+    // Faixa normal: ex 09:00–18:00
+    return nowMinutes >= startMinutes && nowMinutes < endMinutes
+  } else {
+    // Cruzamento de meia-noite: ex 22:00–06:00
+    return nowMinutes >= startMinutes || nowMinutes < endMinutes
+  }
+}
+
 export async function runAutomationCycle(
   force = false,
   triggeredBy: 'schedule' | 'manual' = 'schedule'
@@ -34,6 +63,18 @@ export async function runAutomationCycle(
   if (!force && config.next_run_at && new Date() < new Date(config.next_run_at)) {
     const result: AutomationResult = { success: false, skipped: true, message: 'Ainda não está na hora de executar' }
     await writeLog({ triggeredBy, status: 'skipped', message: result.message, durationMs: 0 })
+    return result
+  }
+
+  // Guard de horário de bloqueio (executa mesmo em força manual para que o usuário
+  // possa testar, mas em execução agendada sempre respeita a faixa)
+  if (!force && isInBlockedHours(config.block_start_time, config.block_end_time)) {
+    const result: AutomationResult = {
+      success: false,
+      skipped: true,
+      message: `Execução bloqueada: horário de bloqueio ativo (${config.block_start_time}–${config.block_end_time})`,
+    }
+    await writeLog({ triggeredBy, status: 'skipped', message: result.message, error: 'blocked_hours', durationMs: 0 })
     return result
   }
 

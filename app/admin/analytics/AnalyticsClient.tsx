@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { usePageTitle } from '@/components/admin/AdminPageTitleContext'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -53,6 +54,7 @@ interface AnalyticsData {
 }
 
 export default function AnalyticsPage() {
+  usePageTitle('Analytics')
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [period, setPeriod] = useState('30d')
@@ -239,8 +241,7 @@ export default function AnalyticsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-2xl font-bold text-neutral-900">Analytics</h1>
+      <div className="flex items-center justify-end mb-8">
         <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
           {periods.map((p) => (
             <button

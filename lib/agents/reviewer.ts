@@ -2,6 +2,7 @@
 import { callOpenRouter } from '@/lib/ai'
 import { getAgentConfig } from '@/lib/agent-configs'
 import { AgentContext, AgentResult } from '@/lib/agents/types'
+import { extractJson } from '@/lib/json-extract'
 
 export const MAX_REVIEW_CYCLES = 3
 
@@ -34,14 +35,9 @@ export async function runReviewerAgent(
     apiKey
   )
 
-  let result: { approved: boolean; issues?: string[] }
-  try {
-    const raw = resp.choices[0]?.message?.content ?? ''
-    const cleaned = raw.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    result = JSON.parse(cleaned)
-  } catch {
-    result = { approved: true }
-  }
+  const raw = resp.choices[0]?.message?.content ?? ''
+  const result: { approved: boolean; issues?: string[] } =
+    extractJson<{ approved: boolean; issues?: string[] }>(raw) ?? { approved: true }
 
   return {
     success: true,

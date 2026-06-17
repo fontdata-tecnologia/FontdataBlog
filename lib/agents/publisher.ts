@@ -1,10 +1,12 @@
 // lib/agents/publisher.ts
 import sanitizeHtml from 'sanitize-html'
 import { db } from '@/drizzle/db'
-import { posts, postCategories, categories, articleThemes, automationConfig, siteSettings, newsletterSubscribers } from '@/drizzle/schema'
+import { posts, postCategories, categories, articleThemes, automationConfig } from '@/drizzle/schema'
 import { eq } from 'drizzle-orm'
 import { generateSlug } from '@/lib/slug'
+import { revalidatePublicPosts } from '@/lib/revalidate'
 import { AgentContext, AgentResult, PublisherTriggers } from '@/lib/agents/types'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 import { aiChat } from '@/lib/ai'
 
 const sanitizeOptions: sanitizeHtml.IOptions = {
@@ -74,6 +76,9 @@ export async function runPublisherAgent(
     console.warn('[Publisher] Falha ao categorizar artigo:', err instanceof Error ? err.message : String(err))
   }
 
+  // Revalida o cache ISR das páginas públicas para o post aparecer na hora.
+  if (post.status === 'published') revalidatePublicPosts(post.slug)
+
   // Mark theme as used
   if (ctx.themeId) {
     await db.update(articleThemes).set({ status: 'used' }).where(eq(articleThemes.id, ctx.themeId))
@@ -87,31 +92,15 @@ export async function runPublisherAgent(
     await db.update(automationConfig).set({ last_run_at: now, next_run_at: nextRun, updated_at: now }).where(eq(automationConfig.id, cfg.id))
   }
 
-  // Webhook trigger
-  if (triggers.webhookUrl?.trim()) {
-    try {
-      await fetch(triggers.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ post_id: post.id, title: post.title, slug: post.slug, status: post.status }),
-      })
-    } catch {}
+  // Dispara evento de webhook via dispatcher central
+  if (triggers.publishStatus === 'published') {
+    dispatchWebhookEvent('post_published', { post_id: post.id, title: post.title, slug: post.slug, status: post.status })
   }
 
   // Newsletter trigger (fire-and-forget)
-  if (triggers.sendNewsletter && triggers.publishStatus === 'published') {
-    try {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
-      const settingsRows = await db.select().from(siteSettings).where(eq(siteSettings.key, 'smtp_settings')).limit(1)
-      const subscribers = await db.select().from(newsletterSubscribers).where(eq(newsletterSubscribers.status, 'active'))
-      if (settingsRows.length > 0 && subscribers.length > 0) {
-        fetch(`${appUrl}/api/admin/newsletter/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-internal': '1' },
-          body: JSON.stringify({ post_id: post.id }),
-        }).catch(() => {})
-      }
-    } catch {}
+  if (triggers.publishStatus === 'published') {
+    const { triggerNewsletterSend } = await import('@/lib/newsletter-trigger')
+    triggerNewsletterSend(post.id)
   }
 
   return {

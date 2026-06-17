@@ -66,6 +66,7 @@ O orquestrador enforce que todos os agentes respeitem:
 8. **Sem `as any`** — corrija o tipo, não suprima o erro
 9. **Correção mínima** — não refatora código saudável ao redor do bug
 10. **Sem comentários desnecessários** — apenas se o motivo for não-óbvio
+11. **Paridade de schema** — se a correção mudar `drizzle/schema.ts`, propague para `lib/migrations-embedded.ts` (`EMBEDDED_MIGRATIONS` + `MIGRATION_ORDER`), `EXPECTED_TABLES` (`lib/db-migrations.ts`) e `drizzle/setup-sql.ts`, tudo idempotente (`IF NOT EXISTS`). Em produção o banco é atualizado pelo `DbUpdateModal`, não por `db:migrate` — sem a paridade o fix não chega ao banco do usuário. Ao reportar, sinalize que o admin verá o modal de atualização de banco após o deploy. Ref: `docs/bugs/banco-desatualizado-modal-nao-detecta-drift.md`
 
 ### Fase 5 — Revisão automática
 Ao final de toda a correção, o orquestrador **sempre** chama o `code-reviewer`:

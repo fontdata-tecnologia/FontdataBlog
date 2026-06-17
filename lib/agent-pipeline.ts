@@ -1,5 +1,5 @@
 // lib/agent-pipeline.ts
-import { getAIApiKey, callOpenRouter } from '@/lib/ai'
+import { getAIApiKey, callOpenRouter, getTextModel } from '@/lib/ai'
 import { runHeadlineAgent } from '@/lib/agents/headline'
 import { runResearcherAgent } from '@/lib/agents/researcher'
 import { runAnalystAgent } from '@/lib/agents/analyst'
@@ -11,6 +11,7 @@ import { runPublisherAgent } from '@/lib/agents/publisher'
 import { getAgentConfig, upsertAgentConfig } from '@/lib/agent-configs'
 import { getAgentsExtra } from '@/lib/firecrawl'
 import { AgentContext, AgentId, PipelineEvent, PublisherTriggers } from '@/lib/agents/types'
+import { dispatchWebhookEvent } from '@/lib/webhooks'
 
 const LEARNING_MARKER = '\n\n--- ERROS RECORRENTES (aprender a evitar) ---'
 const MAX_LEARNING_ITEMS = 10
@@ -45,10 +46,11 @@ ${issues.map((i, n) => `${n + 1}. ${i}`).join('\n')}`
   try {
     const resp = await callOpenRouter(
       {
-        model: 'openai/gpt-4o-mini',
+        model: await getTextModel(),
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1,
         max_tokens: 400,
+        feature: 'content_generation',
       },
       apiKey
     )
@@ -250,16 +252,21 @@ export function createPipelineStream(options: PipelineOptions): ReadableStream {
         if (ctaResult.success) Object.assign(ctx, ctaResult.data)
         send(makeEvent('agent_done', ctaResult.message, 'cta'))
 
-        // 7. Designer
+        // 7. Designer (pulado se desabilitado em agents_extra — ex: usuário sem Pexels)
         if (aborted()) { send(makeEvent('pipeline_error', 'Pipeline interrompido pelo usuário')); controller.close(); return }
-        send(makeEvent('agent_start', 'Gerando imagem de capa...', 'designer'))
-        try {
-          const designResult = await runDesignerAgent(ctx, apiKey)
-          if (designResult.success) Object.assign(ctx, designResult.data)
-          send(makeEvent('agent_done', designResult.message, 'designer'))
-        } catch (imgErr) {
-          const msg = imgErr instanceof Error ? imgErr.message : String(imgErr)
-          send(makeEvent('agent_error', `Imagem falhou (continuando): ${msg}`, 'designer'))
+        const designerEnabled = agentsExtra['designer']?.designer_enabled ?? true
+        if (designerEnabled) {
+          send(makeEvent('agent_start', 'Gerando imagem de capa...', 'designer'))
+          try {
+            const designResult = await runDesignerAgent(ctx, apiKey)
+            if (designResult.success) Object.assign(ctx, designResult.data)
+            send(makeEvent('agent_done', designResult.message, 'designer'))
+          } catch (imgErr) {
+            const msg = imgErr instanceof Error ? imgErr.message : String(imgErr)
+            send(makeEvent('agent_error', `Imagem falhou (continuando): ${msg}`, 'designer'))
+          }
+        } else {
+          send(makeEvent('agent_done', 'Geração de capa desabilitada — artigo sem imagem', 'designer'))
         }
 
         // 8. Publisher
@@ -275,9 +282,11 @@ export function createPipelineStream(options: PipelineOptions): ReadableStream {
         Object.assign(ctx, pubResult.data)
         send(makeEvent('agent_done', pubResult.message, 'publisher', { post_id: ctx.postId }))
 
+        dispatchWebhookEvent('pipeline_completed', { status: 'success', post_id: ctx.postId })
         send(makeEvent('pipeline_done', `Pipeline concluído! Artigo ID ${ctx.postId}`, undefined, { post_id: ctx.postId }))
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
+        dispatchWebhookEvent('pipeline_completed', { status: 'error' })
         send(makeEvent('pipeline_error', msg))
       } finally {
         controller.close()

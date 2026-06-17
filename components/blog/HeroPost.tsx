@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import type { Post, Category } from '@/drizzle/schema'
 
 interface HeroPostProps {
@@ -15,10 +16,12 @@ export function HeroPost({ post }: HeroPostProps) {
     <Link href={`/${post.slug}`} className="block group mb-8">
       <div className="relative w-full overflow-hidden rounded-xl bg-gray-800" style={{ minHeight: '320px', maxHeight: '480px', aspectRatio: '16/9' }}>
         {post.cover_image ? (
-          <img
+          <Image
             src={post.cover_image}
             alt={post.title}
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            fill
+            unoptimized
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div

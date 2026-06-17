@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { estimateReadingTime } from '@/lib/reading-time'
 
 interface Post {
@@ -31,10 +32,12 @@ export function PostCardBusiness({ post, variant = 'grid' }: Props) {
       <Link href={`/${post.slug}`} className="group block relative overflow-hidden rounded-xl">
         <div className="relative aspect-[16/9]">
           {post.cover_image ? (
-            <img
+            <Image
               src={post.cover_image}
               alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              fill
+              unoptimized
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="w-full h-full bg-gray-300" />
@@ -61,12 +64,14 @@ export function PostCardBusiness({ post, variant = 'grid' }: Props) {
   if (variant === 'secondary') {
     return (
       <Link href={`/${post.slug}`} className="group flex flex-row gap-3 bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-sm transition-shadow">
-        <div className="w-28 shrink-0">
+        <div className="relative w-28 shrink-0" style={{ minHeight: '80px' }}>
           {post.cover_image ? (
-            <img
+            <Image
               src={post.cover_image}
               alt={post.title}
-              className="w-full h-full object-cover"
+              fill
+              unoptimized
+              className="object-cover"
             />
           ) : (
             <div className="w-full h-full bg-gray-200" />
@@ -91,12 +96,14 @@ export function PostCardBusiness({ post, variant = 'grid' }: Props) {
 
   return (
     <Link href={`/${post.slug}`} className="group bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow block">
-      <div className="aspect-[16/9]">
+      <div className="relative aspect-[16/9]">
         {post.cover_image ? (
-          <img
+          <Image
             src={post.cover_image}
             alt={post.title}
-            className="w-full h-full object-cover"
+            fill
+            unoptimized
+            className="object-cover"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-brand-primary-light to-gray-100" />

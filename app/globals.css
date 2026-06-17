@@ -462,6 +462,28 @@ body {
   box-shadow: 0 4px 12px rgba(26,79,160,0.3);
 }
 
+/* ── Secondary / quick-action button ─────────────────────── */
+.admin-quick-action {
+  background: var(--at-stat-bg);
+  color: var(--at-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--at-card-border);
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.admin-quick-action:hover {
+  border-color: #1A4FA0;
+  box-shadow: 0 2px 8px rgba(26,79,160,0.12);
+  transform: translateY(-1px);
+}
+
 /* ── Progress bars ───────────────────────────────────────── */
 .admin-progress-bg   { background: var(--at-progress-bg); }
 .admin-progress-fill { background: var(--at-progress-fill); }

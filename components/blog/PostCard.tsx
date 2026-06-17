@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { Badge } from '@/components/ui/Badge'
 import type { Post, Category } from '@/drizzle/schema'
 
@@ -19,10 +20,12 @@ export function PostCard({ post }: PostCardProps) {
       <Link href={`/${post.slug}`} className="block">
         <div className="relative aspect-video bg-brand-primary-light overflow-hidden">
           {post.cover_image ? (
-            <img
+            <Image
               src={post.cover_image}
               alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              fill
+              unoptimized
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

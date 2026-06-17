@@ -3,7 +3,9 @@ import { aiChat, callOpenRouterImage } from '@/lib/ai'
 import { getAgentConfig } from '@/lib/agent-configs'
 import { getAgentsExtra } from '@/lib/firecrawl'
 import { getPexelsApiKey, searchPexelsPhoto } from '@/lib/pexels'
-import { supabaseAdmin, STORAGE_BUCKET } from '@/lib/supabase-admin'
+import { supabaseAdmin, STORAGE_BUCKET, normalizeImageMime } from '@/lib/supabase-admin'
+import { getSettings } from '@/lib/settings'
+import { generateGradientCover, generateGeometricCover } from '@/lib/cover-svg'
 import { AgentContext, AgentResult } from '@/lib/agents/types'
 
 const NO_TEXT_SUFFIX = '. No text, no letters, no words, no numbers anywhere in the image.'
@@ -16,26 +18,51 @@ export async function runDesignerAgent(
 
   const config = await getAgentConfig('designer')
   const extra = await getAgentsExtra()
-  const imageSource = extra['designer']?.image_source ?? 'ai'
-
-  const rawPrompt = await aiChat(
-    'prompt_generation',
-    [
-      { role: 'system', content: config.prompt },
-      {
-        role: 'user',
-        content: `Título: ${ctx.articleTitle}\nResumo: ${ctx.articleExcerpt ?? ''}`,
-      },
-    ],
-    { temperature: 0.8, max_tokens: 300 }
-  )
-
-  const generatedText = rawPrompt.trim() || ctx.articleTitle
+  const imageSource = extra['designer']?.image_source ?? 'code'
 
   let imageBuffer: Buffer
   let contentType = 'image/jpeg'
 
-  if (imageSource === 'pexels') {
+  if (imageSource === 'code') {
+    // -------------------------------------------------------------------
+    // Branch: geração de capa via código SVG (sem IA, sem custo externo)
+    // -------------------------------------------------------------------
+    const codeStyle = extra['designer']?.code_style ?? 'gradient'
+    const settings = await getSettings()
+    const { primary, secondary } = settings.colors
+
+    let svgString: string
+    if (codeStyle === 'geometric') {
+      svgString = generateGeometricCover({ seed: ctx.articleTitle, primary, secondary })
+    } else {
+      // default: 'gradient'
+      svgString = generateGradientCover({
+        title: ctx.articleTitle,
+        category: undefined, // ctx não carrega categoria diretamente — omit
+        primary,
+        secondary,
+      })
+    }
+
+    imageBuffer = Buffer.from(svgString, 'utf-8')
+    contentType = 'image/svg+xml'
+  } else if (imageSource === 'pexels') {
+    // -------------------------------------------------------------------
+    // Branch: busca imagem no Pexels
+    // -------------------------------------------------------------------
+    const rawPrompt = await aiChat(
+      'prompt_generation',
+      [
+        { role: 'system', content: config.prompt },
+        {
+          role: 'user',
+          content: `Título: ${ctx.articleTitle}\nResumo: ${ctx.articleExcerpt ?? ''}`,
+        },
+      ],
+      { temperature: 0.8, max_tokens: 300 }
+    )
+    const generatedText = rawPrompt.trim() || ctx.articleTitle
+
     const pexelsKey = await getPexelsApiKey()
     if (!pexelsKey) {
       return { success: false, message: 'Chave da API Pexels não configurada', error: 'NO_PEXELS_KEY' }
@@ -51,6 +78,22 @@ export async function runDesignerAgent(
     contentType = imgRes.headers.get('content-type') ?? 'image/jpeg'
     imageBuffer = Buffer.from(await imgRes.arrayBuffer())
   } else {
+    // -------------------------------------------------------------------
+    // Branch: geração via IA (OpenRouter image model)
+    // -------------------------------------------------------------------
+    const rawPrompt = await aiChat(
+      'prompt_generation',
+      [
+        { role: 'system', content: config.prompt },
+        {
+          role: 'user',
+          content: `Título: ${ctx.articleTitle}\nResumo: ${ctx.articleExcerpt ?? ''}`,
+        },
+      ],
+      { temperature: 0.8, max_tokens: 300 }
+    )
+    const generatedText = rawPrompt.trim() || ctx.articleTitle
+
     const imageUrl = await callOpenRouterImage(generatedText + NO_TEXT_SUFFIX, config.model, apiKey)
 
     if (imageUrl.startsWith('data:')) {
@@ -65,13 +108,19 @@ export async function runDesignerAgent(
     }
   }
 
-  const ext = contentType.includes('jpeg') || contentType.includes('jpg') ? '.jpg'
-    : contentType.includes('webp') ? '.webp' : '.png'
+  // SVG é gerado internamente (não vem de IA), então preserva direto;
+  // demais MIMEs passam pela normalização (corrige `image/jpg` → `image/jpeg`).
+  const uploadContentType = contentType.includes('svg') ? 'image/svg+xml' : normalizeImageMime(contentType)
+  const ext = uploadContentType.includes('svg') ? '.svg'
+    : uploadContentType.includes('jpeg') ? '.jpg'
+    : uploadContentType.includes('webp') ? '.webp'
+    : uploadContentType.includes('gif') ? '.gif'
+    : '.png'
   const filename = `agent-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`
 
   const { error: uploadError } = await supabaseAdmin.storage
     .from(STORAGE_BUCKET)
-    .upload(filename, imageBuffer, { contentType })
+    .upload(filename, imageBuffer, { contentType: uploadContentType })
 
   if (uploadError) throw new Error(`Upload falhou: ${uploadError.message}`)
 

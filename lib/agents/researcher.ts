@@ -3,17 +3,15 @@ import { callOpenRouter } from '@/lib/ai'
 import { getAgentConfig } from '@/lib/agent-configs'
 import { AgentContext, AgentResult } from '@/lib/agents/types'
 import { getFirecrawlApiKey, getAgentsExtra, firecrawlSearch, isArticleUrl } from '@/lib/firecrawl'
+import { extractJson } from '@/lib/json-extract'
 
 function extractUrls(text: string): string[] {
-  // Try JSON parse first (handles ```json blocks too)
-  try {
-    const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-    const parsed = JSON.parse(cleaned) as { urls?: unknown }
-    if (Array.isArray(parsed.urls)) {
-      const urls = parsed.urls.filter((u): u is string => typeof u === 'string' && u.startsWith('http'))
-      if (urls.length > 0) return urls.slice(0, 8)
-    }
-  } catch { /* fallthrough */ }
+  // Try extractJson first (handles prosa + cercas markdown + aspas problemáticas)
+  const obj = extractJson<{ urls?: unknown }>(text)
+  if (obj && Array.isArray(obj.urls)) {
+    const urls = obj.urls.filter((u): u is string => typeof u === 'string' && u.startsWith('http'))
+    if (urls.length > 0) return urls.slice(0, 8)
+  }
 
   // Try extracting JSON array from anywhere in the text
   const arrayMatch = text.match(/\[\s*"https?:\/\/[^\]]+\]/)

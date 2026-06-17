@@ -1,5 +1,10 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, type ReactNode } from 'react'
+import {
+  IconGithub,
+  IconDocs,
+  IconLinkCustom,
+} from '@/components/admin/icons/ExpxIcons'
 
 type CrawlerType = 'github' | 'docs' | 'custom'
 type PublishStatus = 'draft' | 'published'
@@ -40,10 +45,10 @@ const TYPE_LABELS: Record<CrawlerType, string> = {
   custom: 'URL Customizada',
 }
 
-const TYPE_ICONS: Record<CrawlerType, string> = {
-  github: '⚙️',
-  docs: '📖',
-  custom: '🔗',
+const TYPE_ICONS: Record<CrawlerType, ReactNode> = {
+  github: <IconGithub size={22} />,
+  docs: <IconDocs size={22} />,
+  custom: <IconLinkCustom size={22} />,
 }
 
 const INTERVAL_OPTIONS = [

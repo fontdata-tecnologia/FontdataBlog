@@ -1,14 +1,41 @@
 'use client'
 
 import { useAdminTheme } from './AdminThemeProvider'
+import { useChatPanel } from './ChatPanelContext'
+import { usePageTitleValue } from './AdminPageTitleContext'
 
 export function AdminTopBar() {
   const { theme, toggle } = useAdminTheme()
+  const { toggle: toggleChat, isOpen: chatOpen } = useChatPanel()
   const isDark = theme === 'dark'
+  const { title, subtitle } = usePageTitleValue()
 
   return (
     <div className="admin-topbar">
-      <div className="flex-1" />
+      <div className="flex-1 min-w-0">
+        {title ? (
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold admin-text-primary leading-tight truncate">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="text-sm admin-text-secondary mt-1 truncate">{subtitle}</p>
+            )}
+          </div>
+        ) : null}
+      </div>
+      <button
+        onClick={toggleChat}
+        aria-label={chatOpen ? 'Fechar assistente' : 'Abrir assistente de chat'}
+        title={chatOpen ? 'Fechar assistente' : 'Assistente de chat'}
+        className="admin-view-blog-btn"
+        style={{ gap: '6px' }}
+      >
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+        Assistente
+      </button>
       <a
         href={process.env.NEXT_PUBLIC_APP_URL ?? '/'}
         target="_blank"

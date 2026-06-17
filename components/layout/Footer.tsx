@@ -34,6 +34,8 @@ export function Footer({ blogName, companyName, companyEmail, companyPhone, soci
         </div>
         <div className="border-t border-white/20 mt-6 pt-4 text-center text-white/60 text-xs">
           © {new Date().getFullYear()} {companyName || blogName}. Todos os direitos reservados.
+          {'  ·  '}
+          <a href="/politica-de-privacidade" className="hover:text-white transition-colors underline">Política de Privacidade</a>
         </div>
       </div>
     </footer>

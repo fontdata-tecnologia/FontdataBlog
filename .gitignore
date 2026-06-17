@@ -58,4 +58,7 @@ Thumbs.db
 # IDE
 .vscode/
 .idea/
+
+# Supabase CLI temp files
+supabase/.temp/
 .vercel

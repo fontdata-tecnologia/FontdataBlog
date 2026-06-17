@@ -140,6 +140,8 @@ export async function TechFooter({
 
         <div className="border-t border-white/10 mt-10 pt-6 text-center text-white/30 text-xs">
           © {new Date().getFullYear()} {companyName || blogName}. Todos os direitos reservados.
+          {'  ·  '}
+          <Link href="/politica-de-privacidade" className="hover:text-white/70 transition-colors underline">Política de Privacidade</Link>
         </div>
       </div>
     </footer>

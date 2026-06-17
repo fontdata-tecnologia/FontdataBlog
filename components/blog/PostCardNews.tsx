@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { estimateReadingTime } from '@/lib/reading-time'
 
 interface Post {
@@ -48,7 +49,9 @@ export function PostCardNews({ post, variant = 'card', rank }: Props) {
           <p className="text-xs text-gray-400 mt-1">{formatDate(post.published_at)}</p>
         </div>
         {post.cover_image && (
-          <img src={post.cover_image} alt="" className="w-16 h-11 object-cover rounded shrink-0" />
+          <div className="relative w-16 h-11 shrink-0">
+            <Image src={post.cover_image} alt="" fill unoptimized className="object-cover rounded" />
+          </div>
         )}
       </Link>
     )
@@ -59,11 +62,13 @@ export function PostCardNews({ post, variant = 'card', rank }: Props) {
       <article className="group">
         <Link href={`/${post.slug}`} className="flex gap-5 items-start">
           {post.cover_image && (
-            <div className="w-2/5 shrink-0 overflow-hidden rounded-lg aspect-[16/9]">
-              <img
+            <div className="relative w-2/5 shrink-0 overflow-hidden rounded-lg aspect-[16/9]">
+              <Image
                 src={post.cover_image}
                 alt={post.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                fill
+                unoptimized
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
             </div>
           )}
@@ -95,12 +100,14 @@ export function PostCardNews({ post, variant = 'card', rank }: Props) {
     return (
       <article className="group">
         <Link href={`/${post.slug}`} className="block">
-          <div className="overflow-hidden rounded-lg mb-3 aspect-[16/9]">
+          <div className="relative overflow-hidden rounded-lg mb-3 aspect-[16/9]">
             {post.cover_image ? (
-              <img
+              <Image
                 src={post.cover_image}
                 alt={post.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                fill
+                unoptimized
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
               <div className="w-full h-full bg-gray-100" />
@@ -133,11 +140,13 @@ export function PostCardNews({ post, variant = 'card', rank }: Props) {
     <article className="group">
       <Link href={`/${post.slug}`} className="flex gap-3 items-start">
         {post.cover_image && (
-          <div className="w-20 h-14 shrink-0 overflow-hidden rounded">
-            <img
+          <div className="relative w-20 h-14 shrink-0 overflow-hidden rounded">
+            <Image
               src={post.cover_image}
               alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              fill
+              unoptimized
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           </div>
         )}

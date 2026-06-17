@@ -63,6 +63,25 @@ Ao final de toda a implementação, o orquestrador **sempre** chama o `code-revi
 4. API pública filtra `status = 'published'` — nunca expõe rascunhos
 5. Deploy via `git push` para GitHub — nunca `vercel deploy` diretamente
 6. Chave de API da IA na tabela `site_settings` — nunca em variáveis de ambiente
+7. **Paridade de schema** — se a implementação mudar `drizzle/schema.ts`, a mudança DEVE ser propagada para `lib/migrations-embedded.ts`, `EXPECTED_TABLES` em `lib/db-migrations.ts` e `drizzle/setup-sql.ts` (ver abaixo)
+
+---
+
+## Sinalização de versão de banco (quando a implementação mexe no banco)
+
+Em produção (Vercel) o deploy **não roda `db:migrate`**. O banco do usuário é atualizado
+pelo `DbUpdateModal` (`app/admin/layout.tsx`), que detecta drift entre o schema esperado
+pelo código e o banco real e pede a atualização ao admin.
+
+Se a feature exigir mudança de banco (tabela/coluna/índice), o orquestrador despacha o
+`db-engineer` com instrução explícita de executar o **Protocolo de paridade do schema**:
+após `db:generate`/`db:migrate`, propagar para `lib/migrations-embedded.ts`
+(`EMBEDDED_MIGRATIONS` + `MIGRATION_ORDER`), `EXPECTED_TABLES` (`lib/db-migrations.ts`) e
+`drizzle/setup-sql.ts`, tudo idempotente (`IF NOT EXISTS`). Sem isso, o código deployado
+espera tabelas que o banco do usuário não tem → erro 500 em runtime.
+
+Ao final, sinalize ao usuário: "esta feature altera o banco — após o deploy, ao entrar
+no admin o sistema pedirá a atualização do banco; basta clicar 'Atualizar agora'."
 
 ---
 

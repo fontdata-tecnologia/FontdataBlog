@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { SearchBar } from '@/components/blog/SearchBar'
 import { db } from '@/drizzle/db'
 import { categories } from '@/drizzle/schema'
@@ -25,7 +26,7 @@ export async function PortalHeader({ blogName, logoUrl }: Props) {
       {/* Row 1: logo + search */}
       <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between gap-4">
         <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity shrink-0">
-          {logoUrl && <img src={logoUrl} alt="" className="h-9 w-auto" />}
+          {logoUrl && <Image src={logoUrl} alt="" height={36} width={120} className="h-9 w-auto" unoptimized />}
           <span className="text-xl font-bold tracking-tight whitespace-nowrap">{blogName}</span>
         </Link>
         <div className="w-full max-w-xs">

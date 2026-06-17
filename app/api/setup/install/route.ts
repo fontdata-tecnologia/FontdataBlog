@@ -3,6 +3,30 @@ import postgres from 'postgres'
 import { randomBytes } from 'crypto'
 import { hashPassword } from '@/lib/auth'
 import { SETUP_SQL } from '@/drizzle/setup-sql'
+import { ensureCrons, normalizeUrl } from '@/lib/supabase-cron'
+
+/** Deriva a URL pública de produção do projeto via API Vercel (alias de produção). */
+async function deriveProductionUrl(
+  projectId: string,
+  vercelToken: string,
+  teamId: string | undefined
+): Promise<string | null> {
+  try {
+    const teamParam = teamId ? `?teamId=${teamId}` : ''
+    const res = await fetch(`https://api.vercel.com/v9/projects/${projectId}${teamParam}`, {
+      headers: { Authorization: `Bearer ${vercelToken}` },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    // targets.production.alias é a lista de domínios de produção; o último costuma ser o domínio custom.
+    const alias: string[] | undefined = data?.targets?.production?.alias
+    const host = (alias && alias.length > 0 ? alias[alias.length - 1] : undefined) ?? data?.name
+    if (!host) return null
+    return host.startsWith('http') ? normalizeUrl(host) : `https://${normalizeUrl(host)}`
+  } catch {
+    return null
+  }
+}
 
 export async function POST(req: NextRequest) {
   if (process.env.DATABASE_URL) {
@@ -10,7 +34,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json()
-  const { vercelToken, databaseUrl, supabaseUrl, serviceRoleKey, adminName, adminEmail, adminPassword } = body
+  const { vercelToken, databaseUrl, supabaseUrl, serviceRoleKey, adminName, adminEmail, adminPassword, appUrl: appUrlFromBody } = body
 
   if (!vercelToken || !databaseUrl || !supabaseUrl || !serviceRoleKey || !adminName || !adminEmail || !adminPassword) {
     return NextResponse.json({ error: 'Todos os campos são obrigatórios' }, { status: 400 })
@@ -21,6 +45,14 @@ export async function POST(req: NextRequest) {
 
   if (!projectId) {
     return NextResponse.json({ error: 'VERCEL_PROJECT_ID não encontrado. O projeto deve estar hospedado na Vercel.' }, { status: 400 })
+  }
+
+  const warnings: string[] = []
+
+  // Resolver a URL pública do app: usa a fornecida pelo wizard ou deriva da Vercel.
+  let appUrl = appUrlFromBody ? normalizeUrl(String(appUrlFromBody)) : ''
+  if (!appUrl) {
+    appUrl = (await deriveProductionUrl(projectId, vercelToken, teamId)) ?? ''
   }
 
   let client: ReturnType<typeof postgres> | null = null
@@ -34,6 +66,34 @@ export async function POST(req: NextRequest) {
 
     // 2. Rodar migrations
     await client.unsafe(SETUP_SQL)
+
+    // 2b. Provisionar crons (estrutura versionada): habilitar extensões e
+    //     reconciliar os jobs. Mesmo reconciliador usado nas atualizações do
+    //     banco — garante paridade de comportamento entre setup e update.
+    //     Passamos client/appUrl/serviceKey explicitamente: process.env ainda
+    //     não existe neste request (DATABASE_URL nem está setado).
+    if (!appUrl) {
+      warnings.push(
+        'Crons não agendadas: URL pública do blog indisponível. ' +
+        'Defina NEXT_PUBLIC_APP_URL e atualize o banco pelo painel admin.'
+      )
+    } else {
+      try {
+        const report = await ensureCrons({ client, appUrl, serviceKey: serviceRoleKey })
+        if (!report.extensionsOk) {
+          warnings.push(
+            `Não foi possível habilitar ${report.missingExtensions.join(' e ')} automaticamente. ` +
+            'Habilite em Supabase Dashboard → Database → Extensions para as crons funcionarem.'
+          )
+        }
+        for (const e of report.errors) {
+          warnings.push(`Cron ${e.job}: ${e.message}`)
+        }
+      } catch (cronErr) {
+        const m = cronErr instanceof Error ? cronErr.message : String(cronErr)
+        warnings.push(`Falha ao provisionar crons: ${m}`)
+      }
+    }
 
     // 3. Criar usuário admin
     const passwordHash = await hashPassword(adminPassword)
@@ -54,6 +114,9 @@ export async function POST(req: NextRequest) {
       { key: 'SUPABASE_SERVICE_ROLE_KEY', value: serviceRoleKey, type: 'encrypted', target: ['production', 'preview'] },
       { key: 'JWT_SECRET', value: jwtSecret, type: 'encrypted', target: ['production', 'preview'] },
       { key: 'CRON_SECRET', value: cronSecret, type: 'encrypted', target: ['production', 'preview'] },
+      ...(appUrl
+        ? [{ key: 'NEXT_PUBLIC_APP_URL', value: appUrl, type: 'plain', target: ['production', 'preview'] }]
+        : []),
     ]
 
     const teamParam = teamId ? `?teamId=${teamId}` : ''
@@ -106,7 +169,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Falha ao redesployar: ${JSON.stringify(redeployData)}` }, { status: 500 })
     }
 
-    return NextResponse.json({ deploymentId: redeployData.id ?? redeployData.uid })
+    return NextResponse.json({ deploymentId: redeployData.id ?? redeployData.uid, warnings })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erro desconhecido'
     return NextResponse.json({ error: message }, { status: 500 })

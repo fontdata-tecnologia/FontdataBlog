@@ -6,6 +6,8 @@ import { posts, postCategories, postTags } from '@/drizzle/schema'
 import { eq, count, sql, desc } from 'drizzle-orm'
 import { verifyApiToken } from '@/lib/api-auth'
 import { generateSlug } from '@/lib/slug'
+import { revalidatePublicPosts } from '@/lib/revalidate'
+import { triggerNewsletterSend } from '@/lib/newsletter-trigger'
 
 export const dynamic = 'force-dynamic'
 
@@ -104,6 +106,11 @@ export async function POST(request: NextRequest) {
       await db.insert(postTags).values(
         tag_ids.map((tag_id) => ({ post_id: post.id, tag_id }))
       )
+    }
+
+    if (post.status === 'published') {
+      revalidatePublicPosts(post.slug)
+      triggerNewsletterSend(post.id)
     }
 
     return NextResponse.json({ post }, { status: 201 })

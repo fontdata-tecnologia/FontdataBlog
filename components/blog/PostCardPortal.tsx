@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import type { Post, Category } from '@/drizzle/schema'
 
 interface PostCardPortalProps {
@@ -23,10 +24,12 @@ export function PostCardPortal({ post, size = 'grid' }: PostCardPortalProps) {
             style={{ borderTop: '3px solid var(--color-secondary)' }}
           >
             {post.cover_image ? (
-              <img
+              <Image
                 src={post.cover_image}
                 alt={post.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                fill
+                unoptimized
+                className="object-cover group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
               <div className="w-full h-full" style={{ backgroundColor: 'var(--color-primary)', opacity: 0.15 }} />
@@ -63,11 +66,13 @@ export function PostCardPortal({ post, size = 'grid' }: PostCardPortalProps) {
     <article className="group bg-white rounded-lg overflow-hidden border border-gray-100 hover:shadow-md transition-shadow">
       <Link href={`/${post.slug}`} className="block">
         {post.cover_image && (
-          <div className="aspect-[16/9] overflow-hidden">
-            <img
+          <div className="relative aspect-[16/9] overflow-hidden">
+            <Image
               src={post.cover_image}
               alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              fill
+              unoptimized
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           </div>
         )}

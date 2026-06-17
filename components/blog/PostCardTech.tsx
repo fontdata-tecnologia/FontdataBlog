@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { estimateReadingTime } from '@/lib/reading-time'
 
 interface Post {
@@ -30,10 +31,12 @@ export function PostCardTech({ post, variant = 'card' }: Props) {
     return (
       <Link href={`/${post.slug}`} className="group block relative rounded-xl overflow-hidden bg-gray-900 h-full min-h-[220px]">
         {post.cover_image ? (
-          <img
+          <Image
             src={post.cover_image}
             alt={post.title}
-            className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
+            fill
+            unoptimized
+            className="object-cover opacity-90 group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="absolute inset-0" style={{ backgroundColor: 'var(--color-primary)' }} />
@@ -66,10 +69,12 @@ export function PostCardTech({ post, variant = 'card' }: Props) {
         className="group relative rounded-xl overflow-hidden bg-gray-900 block h-full min-h-[100px]"
       >
         {post.cover_image ? (
-          <img
+          <Image
             src={post.cover_image}
             alt={post.title}
-            className="absolute inset-0 w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500"
+            fill
+            unoptimized
+            className="object-cover opacity-80 group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="absolute inset-0" style={{ backgroundColor: 'var(--color-primary)' }} />
@@ -101,12 +106,14 @@ export function PostCardTech({ post, variant = 'card' }: Props) {
         href={`/${post.slug}`}
         className="group flex rounded-xl overflow-hidden border border-gray-100 hover:shadow-md transition-shadow bg-white"
       >
-        <div className="w-2/5 shrink-0 overflow-hidden" style={{ minHeight: '160px' }}>
+        <div className="relative w-2/5 shrink-0 overflow-hidden" style={{ minHeight: '160px' }}>
           {post.cover_image ? (
-            <img
+            <Image
               src={post.cover_image}
               alt={post.title}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              fill
+              unoptimized
+              className="object-cover group-hover:scale-105 transition-transform duration-300"
             />
           ) : (
             <div className="w-full h-full bg-gray-100" />
@@ -140,12 +147,14 @@ export function PostCardTech({ post, variant = 'card' }: Props) {
       href={`/${post.slug}`}
       className="group bg-white rounded-lg overflow-hidden hover:shadow-md transition-shadow block border border-gray-100"
     >
-      <div className="aspect-[16/9] overflow-hidden">
+      <div className="relative aspect-[16/9] overflow-hidden">
         {post.cover_image ? (
-          <img
+          <Image
             src={post.cover_image}
             alt={post.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            fill
+            unoptimized
+            className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
         ) : (
           <div className="w-full h-full bg-gray-100" />

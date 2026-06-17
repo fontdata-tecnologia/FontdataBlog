@@ -99,3 +99,5 @@ NEXT_PUBLIC_BLOG_NAME # Blog display name
 ```
 
 Copy `.env.example` to `.env` to get started.
+
+Responda sempre em portugues do Brasil

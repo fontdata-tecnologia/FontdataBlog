@@ -1,8 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { usePageTitle } from '@/components/admin/AdminPageTitleContext'
 import { Button } from '@/components/ui/Button'
 import type { NewsletterConfig } from '@/lib/settings'
+import { AdminFormActions } from '@/components/admin/AdminFormActions'
 
 interface Subscriber {
   id: number
@@ -20,6 +22,9 @@ export function NewsletterClient({ initialConfig }: Props) {
   const [config, setConfig] = useState<NewsletterConfig>(initialConfig)
   const [subscribers, setSubscribers] = useState<Subscriber[]>([])
   const [loadingSubscribers, setLoadingSubscribers] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
+  const [unsubscribing, setUnsubscribing] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/admin/newsletter')
@@ -40,13 +45,10 @@ export function NewsletterClient({ initialConfig }: Props) {
       .catch(() => {})
       .finally(() => setLoadingSubscribers(false))
   }, [])
-  const [saving, setSaving] = useState(false)
-  const [toast, setToast] = useState<{ type: 'success' | 'error'; msg: string } | null>(null)
-  const [unsubscribing, setUnsubscribing] = useState<number | null>(null)
 
   function showToast(type: 'success' | 'error', msg: string) {
     setToast({ type, msg })
-    setTimeout(() => setToast(null), 4000)
+    setTimeout(() => setToast(null), 3000)
   }
 
   async function handleSave() {
@@ -88,20 +90,13 @@ export function NewsletterClient({ initialConfig }: Props) {
 
   const activeCount = subscribers.filter((s) => s.status === 'active').length
 
+  usePageTitle(
+    'Newsletter',
+    `${activeCount} inscrito${activeCount !== 1 ? 's' : ''} ativo${activeCount !== 1 ? 's' : ''}`
+  )
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-neutral-900">Newsletter</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {activeCount} inscrito{activeCount !== 1 ? 's' : ''} ativo{activeCount !== 1 ? 's' : ''}
-          </p>
-        </div>
-        <Button onClick={handleSave} loading={saving}>
-          Salvar configurações
-        </Button>
-      </div>
-
       {toast && (
         <div
           className={`mb-6 px-4 py-3 rounded-lg text-sm ${
@@ -117,7 +112,14 @@ export function NewsletterClient({ initialConfig }: Props) {
       <div className="space-y-6">
         {/* Config section */}
         <section className="bg-white rounded-xl border border-gray-200 p-6">
-          <h2 className="text-lg font-semibold text-neutral-900 mb-5">Configurações do Card</h2>
+          <h2 className="text-lg font-semibold text-neutral-900 mb-1">Configurações do Card de Inscrição</h2>
+          <p className="text-sm text-gray-500 mb-5">
+            Personalize o card de inscrição exibido no blog. Para configurar o envio de e-mails, acesse{' '}
+            <a href="/admin/configuracoes" className="text-brand-primary underline">
+              Configurações → Resend (Email)
+            </a>
+            .
+          </p>
 
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -164,6 +166,12 @@ export function NewsletterClient({ initialConfig }: Props) {
               />
             </div>
           </div>
+
+          <AdminFormActions>
+            <Button onClick={handleSave} loading={saving}>
+              Salvar configurações
+            </Button>
+          </AdminFormActions>
         </section>
 
         {/* Subscribers list */}
