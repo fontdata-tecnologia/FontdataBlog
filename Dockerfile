@@ -14,8 +14,13 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-# As NEXT_PUBLIC_* são embutidas no bundle em build time; o Coolify deve passá-las
-# como build args/env. DATABASE_URL não é necessária no build.
+# As NEXT_PUBLIC_* são embutidas no bundle em build time — precisam existir AQUI,
+# não em runtime. O workflow do GitHub Actions as passa via --build-arg.
+# DATABASE_URL e demais segredos NÃO são necessários no build (são lidos em runtime).
+ARG NEXT_PUBLIC_APP_URL
+ARG NEXT_PUBLIC_BLOG_NAME
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
+ENV NEXT_PUBLIC_BLOG_NAME=$NEXT_PUBLIC_BLOG_NAME
 RUN npm run build
 
 # ── Stage 3: runtime ─────────────────────────────────────────────────────────
