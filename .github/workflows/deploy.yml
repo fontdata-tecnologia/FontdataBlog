@@ -42,6 +42,15 @@ jobs:
             type=raw,value=latest
             type=sha,format=long
 
+      # Grava o JSON da service account num arquivo. Secrets multilinha (JSON com
+      # aspas/vírgulas/quebras) não funcionam no input `secrets:` (parser CSV);
+      # usamos `secret-files:` apontando para este arquivo. Se o secret estiver
+      # vazio, o arquivo fica vazio e o Dockerfile pula a gravação (teste -s).
+      - name: Preparar credenciais GCS
+        env:
+          GCS_JSON: ${{ secrets.GCS_CREDENTIALS_JSON }}
+        run: printf '%s' "$GCS_JSON" > "${RUNNER_TEMP}/gcs.json"
+
       - name: Build e push da imagem
         uses: docker/build-push-action@v6
         with:
@@ -56,8 +65,8 @@ jobs:
             NEXT_PUBLIC_BLOG_NAME=${{ vars.NEXT_PUBLIC_BLOG_NAME }}
           # Conteúdo do JSON da service account do GCS, gravado na imagem via
           # mount de secret do BuildKit (não fica no histórico da imagem).
-          secrets: |
-            gcs_credentials=${{ secrets.GCS_CREDENTIALS_JSON }}
+          secret-files: |
+            gcs_credentials=${{ runner.temp }}/gcs.json
 
   deploy:
     needs: build-and-push
