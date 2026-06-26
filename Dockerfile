@@ -38,6 +38,24 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Credenciais do Google Cloud Storage gravadas na imagem a partir de um secret
+# do BuildKit (id=gcs_credentials). O secret NÃO fica no histórico/metadados da
+# imagem — apenas o arquivo resultante é persistido na layer. O workflow passa o
+# conteúdo via `secrets:` (a partir do secret GCS_CREDENTIALS_JSON do GitHub).
+# Se o secret não for fornecido, o arquivo simplesmente não é criado (build não quebra).
+RUN --mount=type=secret,id=gcs_credentials \
+    mkdir -p /app/secrets && \
+    if [ -s /run/secrets/gcs_credentials ]; then \
+      cp /run/secrets/gcs_credentials /app/secrets/gcs.json && \
+      chown nextjs:nodejs /app/secrets/gcs.json && \
+      chmod 400 /app/secrets/gcs.json && \
+      echo "Credenciais GCS gravadas em /app/secrets/gcs.json"; \
+    else \
+      echo "Secret gcs_credentials ausente — pulando gravação das credenciais GCS"; \
+    fi
+# lib/storage.ts usa GOOGLE_APPLICATION_CREDENTIALS quando GCS_CREDENTIALS_JSON não está setado.
+ENV GOOGLE_APPLICATION_CREDENTIALS=/app/secrets/gcs.json
+
 USER nextjs
 EXPOSE 3000
 
