@@ -30,6 +30,12 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 
+# curl é necessário para os Scheduled Jobs do Coolify, que rodam DENTRO do
+# container e chamam os endpoints de cron via `curl`. A imagem node:alpine só
+# traz o wget do BusyBox por padrão — sem esta linha o job falha com
+# "sh: curl: not found".
+RUN apk add --no-cache curl
+
 RUN addgroup --system --gid 1001 nodejs \
   && adduser --system --uid 1001 nextjs
 
